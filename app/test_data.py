@@ -11,27 +11,20 @@ from service import ConversationService
 settings = {"db_name": "chat_app_testing", "uri": "mongodb://localhost:27017"}
 
 
-async def data_test():
+async def data_test_for_conversation():
     client = AsyncIOMotorClient(settings["uri"])
     await init_beanie(
         database=client.chat_testing,
         document_models=[Message, User, Conversation],
     )
-
-    # user1 = User(
-    #     username="User1",
-    #     email="user1@gmail.com",
-    #     password="password",
-    #     is_active=True,
-    # )
-    # user2 = User(
-    #     username="User2",
-    #     email="user2@gmail.com",
-    #     password="password",
-    #     is_active=True,
-    # )
     user1 = await User.find_one(User.username == "User1")
+    if user1 is None:
+        user1 = User(username="User1", email="user1@gmail.com", password="123456", is_active=True)
+        await user1.insert()
     user2 = await User.find_one(User.username == "User2")
+    if user2 is None:
+        user2 = User(username="User2", email="user2@gmail.com", password="123456", is_active=True)
+        await user2.insert()
     participant1 = Participant(user_id=user1.id)
     participant2 = Participant(user_id=user2.id)
     conversation = Conversation(
@@ -65,21 +58,36 @@ async def get_conversation_that_include_participant():
     #     print(user)
 
 
-async def test_data_for_message():
+async def init_test_data():
     client = AsyncIOMotorClient(settings["uri"])
     await init_beanie(
         database=client.chat_testing,
         document_models=[Message, User, Conversation],
     )
-    user1 = await User.find_one(User.username == "User1")
-    user2 = await User.find_one(User.username == "User2")
-    user3 = await User.find_one(User.username == "User3")
-    conversation1 = await Conversation.find_one(
-        Conversation.id == PydanticObjectId("66649e1747a0f6ecd6c14160")
+    user1 = User(username="User1", email="user1@gmail.com", password="123456", is_active=True)
+    await user1.insert()
+    user2 = User(username="User2", email="user2@gmail.com", password="123456", is_active=True)
+    await user2.insert()
+    user3 = User(username="User3", email="user3@gmail.com", password="123456", is_active=True)
+    await user3.insert()
+    participant1 = Participant(user_id=user1.id)
+    participant2 = Participant(user_id=user2.id)
+    conversation1 = Conversation(
+        title="Test Conversation",
+        creator=user1,
+        participants=[participant1, participant2],
+        type="private",
     )
-    conversation2 = await Conversation.find_one(
-        Conversation.id == PydanticObjectId("666571a5085e310b634fb7e9")
+    await conversation1.insert()
+
+    conversation2 = Conversation(
+        title="Test Conversation",
+        creator=user1,
+        participants=[participant1, Participant(user_id=user3.id)],
+        type="private",
     )
+    await conversation2.insert()
+
     message = [
         Message(
             conversation_id=conversation1.id,
@@ -132,4 +140,4 @@ if __name__ == "__main__":
         user = await User.find_one(User.username == "User1")
         print(user)
 
-    asyncio.run(run())
+    asyncio.run(init_test_data())

@@ -2,10 +2,7 @@ from datetime import datetime
 from typing import Optional
 
 from beanie import Document, Link, PydanticObjectId
-from bson import ObjectId
 from pydantic import Field, BaseModel
-from model.mongo.conversation import Conversation
-from model.mongo.user import User
 
 
 class Attachment(BaseModel):

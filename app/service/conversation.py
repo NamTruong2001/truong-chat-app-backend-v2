@@ -104,3 +104,10 @@ class ConversationService:
         )
         await conversation.insert()
         return conversation
+
+
+    async def get_conversation_info(self, conversation_id: str):
+        conversation = await Conversation.find_one({"_id": ObjectId(conversation_id)})
+        if not conversation:
+            raise ConversationNotFound(conversation_id)
+        return conversation

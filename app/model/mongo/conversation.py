@@ -2,7 +2,6 @@ from datetime import datetime
 from beanie import Document, Link, PydanticObjectId
 from typing import List, Union, Optional
 
-from beanie.odm.operators.find.array import ElemMatch
 from pydantic import Field, BaseModel
 from .user import User
 
