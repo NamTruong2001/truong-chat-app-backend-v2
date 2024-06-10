@@ -1,8 +1,9 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Depends
 
 from service import ConversationService
+from util.jwt import validate_token
 
 
 class ConversationRouter:
@@ -31,5 +32,25 @@ class ConversationRouter:
     def create_conversation(self):
         pass
 
-    def test(self):
+    async def remove_participant(
+        self, conversation_id: Annotated[str, Query()], user_id: Annotated[str, Query()]
+    ):
+        conversation = await self.conversation_service.remove_participant(
+            conversation_id=conversation_id, user_id=user_id
+        )
+        return conversation
+
+    async def add_participant(
+        self, conversation_id: Annotated[str, Query()], user_id: Annotated[str, Query()]
+    ):
+        conversation = await self.conversation_service.add_participant(
+            conversation_id=conversation_id, user_id=user_id
+        )
+        return conversation
+
+    def test(self, user: Annotated[str, Query] = Depends(validate_token)):
+        print(user)
         return "test"
+
+    def get_router(self):
+        return self.router

@@ -1,8 +1,14 @@
 from beanie import PydanticObjectId
 from bson import ObjectId
+from fastapi import HTTPException
 
 from model.mongo import Conversation, Participant, User
-from exceptions import ConversationNotFound, UserNotFound
+from exceptions import (
+    ConversationNotFound,
+    UserNotFound,
+    ParticipantAlreadyExists,
+    ParticipantNotFound,
+)
 from schemas import ConversationWithLatestMessage
 
 
@@ -80,7 +86,6 @@ class ConversationService:
             ],
             projection_model=ConversationWithLatestMessage,
         ).to_list()
-        print(conversations)
         return conversations
 
     async def create_conversation(
@@ -105,9 +110,26 @@ class ConversationService:
         await conversation.insert()
         return conversation
 
-
     async def get_conversation_info(self, conversation_id: str):
         conversation = await Conversation.find_one({"_id": ObjectId(conversation_id)})
         if not conversation:
             raise ConversationNotFound(conversation_id)
         return conversation
+
+    async def add_participant(self, conversation_id: str, user_id: str):
+        try:
+            conversation = await self.get_conversation_info(conversation_id)
+            await conversation.add_participant(user_id)
+            await conversation.update()
+            return conversation
+        except ParticipantAlreadyExists as pae:
+            raise HTTPException(status_code=400, detail=str(pae))
+
+    async def remove_participant(self, conversation_id: str, user_id: str):
+        try:
+            conversation = await self.get_conversation_info(conversation_id)
+            await conversation.remove_participant(user_id)
+            await conversation.update()
+            return conversation
+        except ParticipantNotFound as pnf:
+            raise HTTPException(status_code=400, detail=str(pnf))
