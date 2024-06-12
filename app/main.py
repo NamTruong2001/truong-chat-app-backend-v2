@@ -11,7 +11,7 @@ from router.http.conversation import ConversationRouter
 from router.http.register import SignUpRouter
 from router.http.test import TestRouter
 from router.socket import ChatSocket
-from service import ConversationService
+from service import ConversationService, ChatService
 from db.mongo import initialize_mongo_with_beanie
 from service.user import UserService
 
@@ -37,12 +37,17 @@ async def startup_event():
     conversation_router = ConversationRouter(
         conversation_service=conversation_service, prefix="/api/conversation"
     )
+    chat_service = ChatService()
     auth_router = AuthRouter(user_service=user_service, prefix="/api/auth")
     register_router = SignUpRouter(user_service=user_service, prefix="/api/register")
     fapp.include_router(conversation_router)
     fapp.include_router(auth_router)
     fapp.include_router(register_router)
-    chat_socket = ChatSocket(name_space="/chat")
+    chat_socket = ChatSocket(
+        name_space="/chat",
+        chat_service=chat_service,
+        conversation_service=conversation_service,
+    )
     sio.register_namespace(chat_socket)
     # test_router = TestRouter(prefix="/hehe")
     # app.include_router(test_router)

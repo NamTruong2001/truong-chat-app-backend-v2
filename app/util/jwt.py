@@ -6,9 +6,11 @@ from model.mongo import User
 import jwt
 
 from schemas.user import UserRead
+from util.setting import get_settings
 
-SECURITY_ALGORITHM = "HS256"
-SECRET_KEY = "truongnn"
+settings = get_settings()
+SECURITY_ALGORITHM = settings.jwt_algorithm
+SECRET_KEY = settings.jwt_secret_key
 EXPIRES_AFTER_MINUTES = 30
 
 reusable_oauth2 = HTTPBearer(scheme_name="Authorization")
