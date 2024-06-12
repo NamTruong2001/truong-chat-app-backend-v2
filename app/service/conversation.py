@@ -1,4 +1,5 @@
 from beanie import PydanticObjectId
+from beanie.odm.operators.find.comparison import In
 from bson import ObjectId
 from fastapi import HTTPException
 
@@ -9,7 +10,8 @@ from exceptions import (
     ParticipantAlreadyExists,
     ParticipantNotFound,
 )
-from schemas import ConversationWithLatestMessage
+from schemas.conversation import ConversationWithLatestMessage
+from schemas.user import UserRead
 
 
 class ConversationService:
@@ -19,21 +21,21 @@ class ConversationService:
     async def get_conversation_by_user_and_conversation_id(
         self, user_id: str, conversation_id: str
     ):
-        conversations = await Conversation.find(
+        conversation = await Conversation.find(
             {
                 "$and": [
                     {"_id": ObjectId(conversation_id)},
                     {"participants": {"$elemMatch": {"user_id": ObjectId(user_id)}}},
                 ]
             }
-        ).to_list()
-        if not conversations:
+        ).first_or_none()
+        if not conversation:
             raise ConversationNotFound(conversation_id)
-        return conversations
+        return conversation
 
-    async def get_user_conversation_sort_by_latest_message(self, user_id: str):
+    async def get_user_conversation_sort_by_latest_message(self, user: UserRead):
         """
-        :param user_id:
+        :param user:
         :return:
          group message by conversation id and by max created_at
         filter conversation of that user and join with max created_at message by conversation_id
@@ -43,7 +45,7 @@ class ConversationService:
                 {
                     "$match": {
                         "participants": {
-                            "$elemMatch": {"user_id": PydanticObjectId(user_id)}
+                            "$elemMatch": {"user_id": PydanticObjectId(user.id)}
                         }
                     }
                 },
@@ -95,12 +97,14 @@ class ConversationService:
         conversation_type: str,
         participant_ids: list[str],
     ):
-        creator = User.find_one(User.id == PydanticObjectId(creator_id))
+        creator = await User.find_one(User.id == PydanticObjectId(creator_id))
         if creator is None:
             raise UserNotFound(creator_id)
         participants = [
-            Participant(user_id=participant_id) for participant_id in participant_ids
+            Participant(user_id=PydanticObjectId(participant_id))
+            for participant_id in participant_ids
         ]
+        participants.append(Participant(user_id=PydanticObjectId(creator_id)))
         conversation = Conversation(
             title=title,
             creator=creator,
@@ -116,20 +120,48 @@ class ConversationService:
             raise ConversationNotFound(conversation_id)
         return conversation
 
-    async def add_participant(self, conversation_id: str, user_id: str):
+    async def add_participant(
+        self, conversation_id: str, add_user_ids: list[str], current_user: UserRead
+    ):
         try:
-            conversation = await self.get_conversation_info(conversation_id)
-            await conversation.add_participant(user_id)
-            await conversation.update()
+            # add_user = await User.find_one(User.id == PydanticObjectId(add_user_id))
+            # if add_user is None:
+            #     raise UserNotFound(add_user_id)
+            conversation = await self.get_conversation_by_user_and_conversation_id(
+                conversation_id=conversation_id, user_id=str(current_user.id)
+            )
+            added_participants = conversation.add_participant(add_user_ids)
+            if not added_participants:
+                raise ParticipantAlreadyExists("Participants already exist")
+            await conversation.save()
             return conversation
         except ParticipantAlreadyExists as pae:
             raise HTTPException(status_code=400, detail=str(pae))
+        except ConversationNotFound as cnf:
+            raise HTTPException(status_code=400, detail=str(cnf))
+        except UserNotFound as unf:
+            raise HTTPException(status_code=400, detail=str(unf))
 
-    async def remove_participant(self, conversation_id: str, user_id: str):
+    async def remove_participant(
+        self, conversation_id: str, remove_user_ids: list[str], current_user: UserRead
+    ):
         try:
-            conversation = await self.get_conversation_info(conversation_id)
-            await conversation.remove_participant(user_id)
-            await conversation.update()
+            # remove_users = await User.find(
+            #     In(User.id, [PydanticObjectId(user_id) for user_id in remove_user_ids])
+            # ).to_list()
+            # if not remove_users:
+            #     raise UserNotFound("")
+            conversation = await self.get_conversation_by_user_and_conversation_id(
+                conversation_id=conversation_id, user_id=str(current_user.id)
+            )
+            removed_participants = conversation.remove_participant(remove_user_ids)
+            if not removed_participants:
+                raise ParticipantNotFound("Participants not found")
+            await conversation.save()
             return conversation
         except ParticipantNotFound as pnf:
             raise HTTPException(status_code=400, detail=str(pnf))
+        except ConversationNotFound as cnf:
+            raise HTTPException(status_code=400, detail=str(cnf))
+        except UserNotFound as unf:
+            raise HTTPException(status_code=400, detail=str(unf))

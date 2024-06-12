@@ -9,14 +9,12 @@ from schemas.user import UserRead
 
 SECURITY_ALGORITHM = "HS256"
 SECRET_KEY = "truongnn"
+EXPIRES_AFTER_MINUTES = 30
 
 reusable_oauth2 = HTTPBearer(scheme_name="Authorization")
 
 
 def validate_token(http_authorization_credentials=Depends(reusable_oauth2)) -> UserRead:
-    """
-    Decode JWT token to get username => return username
-    """
     try:
         payload = jwt.decode(
             http_authorization_credentials.credentials,

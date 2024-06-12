@@ -24,24 +24,37 @@ class Conversation(Document):
         collection = "conversation"
         indexes = ["creator, created_at"]
 
-    async def remove_participant(self, user_id: str):
-        new_participants = [
+    def remove_participant(self, user_id: list[str]):
+        # new_participants = [
+        #     participant
+        #     for participant in self.participants
+        #     if participant.user_id != user_id
+        # ]
+        # if len(new_participants) == len(self.participants):
+        #     raise ParticipantAlreadyExists("Participant does not exist")
+        removed_participants = [
             participant
             for participant in self.participants
-            if participant.user_id != user_id
+            if str(participant.user_id) not in user_id
         ]
-        if len(new_participants) == len(self.participants):
-            raise ParticipantAlreadyExists("Participant does not exist")
+        self.participants = removed_participants
+        return removed_participants
 
-        self.participants = new_participants
-
-    async def add_participant(self, user_id: str):
+    def add_participant(self, user_ids: list[str]):
         participants_user_ids = [
             participant.user_id for participant in self.participants
         ]
-        if user_id in participants_user_ids:
-            raise ParticipantAlreadyExists("Participant already exists")
-        self.participants.append(Participant(user_id=user_id))
+        new_participants = [
+            Participant(user_id=PydanticObjectId(user_id))
+            for user_id in user_ids
+            if user_id not in participants_user_ids
+        ]
+        # for user_id in user_ids:
+        #     if user_id in participants_user_ids:
+        #         raise ParticipantAlreadyExists("Participant already exists")
+        print(new_participants)
+        self.participants.extend(new_participants)
+        return new_participants
 
     async def test(self):
         pass

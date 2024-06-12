@@ -4,53 +4,85 @@ from fastapi import APIRouter, Query, Depends
 
 from service import ConversationService
 from util.jwt import validate_token
+from schemas.conversation import (
+    RemoveParticipantsRequest,
+    AddParticipantsRequest,
+    CreateConversationRequest,
+)
+from schemas.user import UserRead
 
 
-class ConversationRouter:
-    def __init__(self, conversation_service: ConversationService):
-        self.router = APIRouter()
+class ConversationRouter(APIRouter):
+    def __init__(self, conversation_service: ConversationService, prefix: str):
+        super().__init__(prefix=prefix)
         self.conversation_service = conversation_service
-        self.router.add_api_route("/all", self.get_conversations, methods=["GET"])
-        self.router.add_api_route("/", self.get_conversation, methods=["GET"])
-        self.router.add_api_route("/", self.create_conversation, methods=["POST"])
-        self.router.add_api_route("/test", self.test, methods=["GET"])
+        super().add_api_route("/all", self.get_conversations, methods=["GET"])
+        super().add_api_route("/", self.get_conversation, methods=["GET"])
+        super().add_api_route("/", self.create_conversation, methods=["POST"])
+        super().add_api_route(
+            "/remove-participant", self.remove_participant, methods=["POST"]
+        )
+        super().add_api_route(
+            "/add-participant", self.add_participant, methods=["POST"]
+        )
+        super().add_api_route("/test", self.test, methods=["GET"])
 
-    async def get_conversations(self, user_id: Annotated[str, Query()]):
+    async def get_conversations(
+        self, user: Annotated[UserRead, Query] = Depends(validate_token)
+    ):
+        print(user)
         conversations = await self.conversation_service.get_user_conversation_sort_by_latest_message(
-            user_id=user_id
+            user=user
         )
         return conversations
 
     async def get_conversation(
-        self, conversation_id: Annotated[str, Query()], user_id: Annotated[str, Query()]
+        self,
+        conversation_id: Annotated[str, Query()],
+        user: Annotated[UserRead, Query] = Depends(validate_token),
     ):
         conversation = await self.conversation_service.get_conversation_by_user_and_conversation_id(
-            user_id=user_id, conversation_id=conversation_id
+            user_id=str(user.id), conversation_id=conversation_id
         )
         return conversation
 
-    def create_conversation(self):
-        pass
+    async def create_conversation(
+        self,
+        create_conversation_request: CreateConversationRequest,
+        user: Annotated[UserRead, Query] = Depends(validate_token),
+    ):
+        conversation = await self.conversation_service.create_conversation(
+            title=create_conversation_request.title,
+            creator_id=str(user.id),
+            conversation_type=create_conversation_request.conversation_type,
+            participant_ids=create_conversation_request.participant_ids,
+        )
+        return conversation
 
     async def remove_participant(
-        self, conversation_id: Annotated[str, Query()], user_id: Annotated[str, Query()]
+        self,
+        remove_participant_request: RemoveParticipantsRequest,
+        user: Annotated[UserRead, Query] = Depends(validate_token),
     ):
         conversation = await self.conversation_service.remove_participant(
-            conversation_id=conversation_id, user_id=user_id
+            conversation_id=remove_participant_request.conversation_id,
+            remove_user_ids=remove_participant_request.remove_participant_ids,
+            current_user=user,
         )
         return conversation
 
     async def add_participant(
-        self, conversation_id: Annotated[str, Query()], user_id: Annotated[str, Query()]
+        self,
+        add_participant_request: AddParticipantsRequest,
+        user: Annotated[UserRead, Query] = Depends(validate_token),
     ):
         conversation = await self.conversation_service.add_participant(
-            conversation_id=conversation_id, user_id=user_id
+            conversation_id=add_participant_request.conversation_id,
+            add_user_ids=add_participant_request.add_participant_ids,
+            current_user=user,
         )
         return conversation
 
-    def test(self, user: Annotated[str, Query] = Depends(validate_token)):
+    def test(self, user: Annotated[UserRead, Query] = Depends(validate_token)):
         print(user)
         return "test"
-
-    def get_router(self):
-        return self.router
