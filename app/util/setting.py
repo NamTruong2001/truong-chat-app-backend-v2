@@ -13,8 +13,8 @@ class Settings(BaseSettings):
     jwt_secret_key: str
     jwt_algorithm: str
     redis_host: str
-    redis_port: str
-    redis_db: str
+    redis_port: int
+    redis_db: int
     redis_password: str
     redis_user: str
     allowed_images_type: list[str] = [

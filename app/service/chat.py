@@ -1,3 +1,5 @@
+from beanie import PydanticObjectId
+
 from model.mongo import Message
 from schemas import MessageRequest
 
@@ -7,10 +9,12 @@ class ChatService:
         pass
 
     async def save_message(self, message: MessageRequest):
-        message_db = Message(
-            sender_id=message.sender_id,
-            conversation_id=message.conversation_id,
-            message=message.message,
-            message_type=message.message_type,
+        saved_message = Message(
+            sender_id=PydanticObjectId(message.sender_id),
+            conversation_id=PydanticObjectId(message.conversation_id),
+            content=message.content,
+            type=message.type,
+            attachment=message.attachment,
         )
-        await message_db.insert()
+        await saved_message.insert()
+        return saved_message

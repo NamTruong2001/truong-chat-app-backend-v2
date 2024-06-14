@@ -1,7 +1,10 @@
 from datetime import datetime
 from enum import Enum
+from typing import Union
 
 from pydantic import BaseModel
+
+from model.mongo import Attachment
 
 
 class MessageType(str, Enum):
@@ -16,6 +19,7 @@ class MessageRequest(BaseModel):
     sender_id: str
     type: MessageType
     content: str
+    attachment: Union[None, Attachment] = None
 
     class Config:
         use_enum_value = True

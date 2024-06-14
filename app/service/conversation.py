@@ -11,6 +11,7 @@ from exceptions import (
     ParticipantNotFound,
 )
 from schemas.conversation import ConversationWithLatestMessage
+from schemas.enums import ConversationEnum
 from schemas.user import UserRead
 
 
@@ -165,3 +166,31 @@ class ConversationService:
             raise HTTPException(status_code=400, detail=str(cnf))
         except UserNotFound as unf:
             raise HTTPException(status_code=400, detail=str(unf))
+
+    async def get_user_conversations(
+        self, user_id: str, conversation_type: ConversationEnum, is_all: bool = False
+    ):
+        if is_all is True:
+            search_criteria = {"participants.user_id": PydanticObjectId(user_id)}
+        else:
+            search_criteria = {
+                "$and": [
+                    {"participants.user_id": PydanticObjectId(user_id)},
+                    {"type": conversation_type.value},
+                ]
+            }
+
+        conversations = await Conversation.find(search_criteria).to_list()
+        return conversations
+
+    async def get_participants_ids_from_all_user_private_conversations(
+        self, user_id: str
+    ):
+        conversations = await self.get_user_conversations(
+            user_id=user_id, conversation_type=ConversationEnum.PRIVATE
+        )
+        participants_ids = []
+        for conversation in conversations:
+            for participant in conversation.participants:
+                participants_ids.append(str(participant.user_id))
+        return participants_ids

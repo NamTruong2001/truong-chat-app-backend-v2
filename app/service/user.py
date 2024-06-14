@@ -1,6 +1,7 @@
 from fastapi import HTTPException
 
 from exceptions import UserNotFound
+from repository.user_repository import UserRepository
 from schemas.user import UserRead
 from util.jwt import generate_jwt_token
 from model.mongo import User
@@ -8,8 +9,8 @@ from schemas import UserLogin, UserRegister
 
 
 class UserService:
-    def __init__(self):
-        pass
+    def __init__(self, user_repository: UserRepository):
+        self.user_repository = user_repository
 
     async def login(self, user_login: UserLogin):
         user = await User.find_one(
@@ -34,3 +35,12 @@ class UserService:
         return UserRead(
             id=new_user.id, email=new_user.email, username=new_user.username
         )
+
+    def is_user_online(self, user_id: str) -> bool:
+        return self.user_repository.is_user_online(user_id)
+
+    def add_online_user(self, user_id: str):
+        self.user_repository.add_online_user(user_id)
+
+    def remove_online_user(self, user_id: str):
+        self.user_repository.remove_online_user(user_id)

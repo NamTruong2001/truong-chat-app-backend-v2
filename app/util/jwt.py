@@ -4,6 +4,7 @@ from pydantic import ValidationError
 
 from model.mongo import User
 import jwt
+from socketio.exceptions import ConnectionRefusedError
 
 from schemas.user import UserRead
 from util.setting import get_settings
@@ -33,6 +34,26 @@ def validate_token(http_authorization_credentials=Depends(reusable_oauth2)) -> U
             status_code=403,
             detail=f"Could not validate credentials",
         )
+
+
+def validate_socket_connection(auth_headers: dict) -> UserRead:
+    try:
+        if "HTTP_TOKEN" in auth_headers:
+            token = auth_headers["HTTP_TOKEN"]
+            payload = jwt.decode(
+                token,
+                SECRET_KEY,
+                algorithms=[SECURITY_ALGORITHM],
+            )
+            return UserRead(
+                id=payload.get("id"),
+                email=payload.get("email"),
+                username=payload.get("username"),
+            )
+        else:
+            raise ConnectionRefusedError({"hehe": "hehe"})
+    except (jwt.PyJWTError, ValidationError):
+        raise ConnectionRefusedError("Can't validate token")
 
 
 def generate_jwt_token(user_db: User):
