@@ -1,4 +1,4 @@
-from redis import Redis
+from redis.asyncio import Redis
 
 from util import get_settings
 import redis
@@ -13,7 +13,7 @@ def connect_to_redis_with_retry() -> Redis:
 
     for i in range(3):  # Retry up to 10 times
         try:
-            redis_client = redis.Redis(
+            redis_client = Redis(
                 password=(
                     settings.redis_password if not settings.redis_password else None
                 ),

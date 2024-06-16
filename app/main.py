@@ -5,7 +5,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from repository.user_repository import UserRepository
+from repository.user import UserRepository
 from router.http.auth import AuthRouter
 from router.http.conversation import ConversationRouter
 from router.http.register import SignUpRouter

@@ -10,13 +10,15 @@ from exceptions import (
     ParticipantAlreadyExists,
     ParticipantNotFound,
 )
+from repository import ConversationRepository
 from schemas.conversation import ConversationWithLatestMessage
 from schemas.enums import ConversationEnum
 from schemas.user import UserRead
 
 
 class ConversationService:
-    def __init__(self):
+    def __init__(self, conversation_repository: ConversationRepository):
+        self.conversation_repository = conversation_repository
         pass
 
     async def get_conversation_by_user_and_conversation_id(
@@ -147,11 +149,6 @@ class ConversationService:
         self, conversation_id: str, remove_user_ids: list[str], current_user: UserRead
     ):
         try:
-            # remove_users = await User.find(
-            #     In(User.id, [PydanticObjectId(user_id) for user_id in remove_user_ids])
-            # ).to_list()
-            # if not remove_users:
-            #     raise UserNotFound("")
             conversation = await self.get_conversation_by_user_and_conversation_id(
                 conversation_id=conversation_id, user_id=str(current_user.id)
             )
@@ -183,14 +180,39 @@ class ConversationService:
         conversations = await Conversation.find(search_criteria).to_list()
         return conversations
 
-    async def get_participants_ids_from_all_user_private_conversations(
-        self, user_id: str
-    ):
-        conversations = await self.get_user_conversations(
-            user_id=user_id, conversation_type=ConversationEnum.PRIVATE
-        )
-        participants_ids = []
-        for conversation in conversations:
-            for participant in conversation.participants:
-                participants_ids.append(str(participant.user_id))
-        return participants_ids
+    async def leave_conversation(self, user: UserRead, conversation_id: str):
+        try:
+            conversation = await self.get_conversation_by_user_and_conversation_id(
+                conversation_id=conversation_id, user_id=str(user.id)
+            )
+            removed_participants = conversation.remove_participant([str(user.id)])
+            if not removed_participants:
+                raise ParticipantNotFound("Participants not found")
+            await conversation.save()
+            return conversation
+        except ParticipantNotFound as pnf:
+            raise HTTPException(status_code=400, detail=str(pnf))
+        except ConversationNotFound as cnf:
+            raise HTTPException(status_code=400, detail=str(cnf))
+        except UserNotFound as unf:
+            raise HTTPException(status_code=400, detail=str(unf))
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    async def is_user_in_conversation(self, user_id: str, conversation_id: str):
+        if self.conversation_repository.is_conversation_cached(conversation_id):
+            is_in = await self.conversation_repository.is_user_in_cached_conversation(
+                user_id=user_id, conversation_id=conversation_id
+            )
+            return is_in
+        else:
+            try:
+                conversation = await self.get_conversation_by_user_and_conversation_id(
+                    user_id=user_id, conversation_id=conversation_id
+                )
+                await self.conversation_repository.cache_conversation_participants(
+                    conversation_id=str(conversation.id), participant_ids=[user_id]
+                )
+                return True
+            except ConversationNotFound:
+                return False

@@ -6,7 +6,7 @@ from pydantic import ValidationError
 from socketio import AsyncNamespace
 
 from schemas import MessageRequest
-from schemas.enums import ConversationEnum
+from schemas.enums import ConversationEnum, SocketAction
 from service.user import UserService
 from util import validate_socket_connection
 from service import ConversationService, ChatService
@@ -30,7 +30,9 @@ class ChatSocket(AsyncNamespace):
         # print("Connected")
         user = validate_socket_connection(auth)
         await self.save_session(sid, {"user_id": str(user.id)})
-        self.user_service.add_online_user(str(user.id))
+        await self.user_service.manage_user_socket_connection(
+            user_id=str(user.id), socket_id=sid, connect_action=SocketAction.CONNECT
+        )
 
         conversations = await self.conversation_service.get_user_conversations(
             user_id=str(user.id),
@@ -76,7 +78,12 @@ class ChatSocket(AsyncNamespace):
 
     async def on_disconnect(self, sid):
         print(sid, "disconnected")
-        self.user_service.remove_online_user(sid)
+        user_session = await self.get_session(sid)
+        user_id = user_session["user_id"]
+
+        await self.user_service.manage_user_socket_connection(
+            user_id=str(user_id), socket_id=sid, connect_action=SocketAction.DISCONNECT
+        )
 
     async def on_message(self, sid, data):
         try:
@@ -102,7 +109,3 @@ class ChatSocket(AsyncNamespace):
 
     async def on_presence(self, sid, data):
         print(data)
-
-    async def on_disconnect(self, sid):
-        print("Disconnected")
-        print(sid)

@@ -25,12 +25,12 @@ class ConversationRouter(APIRouter):
         super().add_api_route(
             "/add-participant", self.add_participant, methods=["POST"]
         )
+        super().add_api_route("/leave", self.leave_conversation, methods=["POST"])
         super().add_api_route("/test", self.test, methods=["GET"])
 
     async def get_conversations(
         self, user: Annotated[UserRead, Query] = Depends(validate_token)
     ):
-        print(user)
         conversations = await self.conversation_service.get_user_conversation_sort_by_latest_message(
             user=user
         )
@@ -80,6 +80,16 @@ class ConversationRouter(APIRouter):
             conversation_id=add_participant_request.conversation_id,
             add_user_ids=add_participant_request.add_participant_ids,
             current_user=user,
+        )
+        return conversation
+
+    async def leave_conversation(
+        self,
+        conversation_id: Annotated[str, Query],
+        user: Annotated[UserRead, Query] = Depends(validate_token),
+    ):
+        conversation = await self.conversation_service.leave_conversation(
+            conversation_id=conversation_id, user=user
         )
         return conversation
 
