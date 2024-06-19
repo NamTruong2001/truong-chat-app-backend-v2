@@ -3,7 +3,8 @@ from fastapi import HTTPException
 from exceptions import UserNotFound
 from repository.user import UserRepository
 from schemas.enums import SocketAction
-from schemas.user import UserRead
+from schemas.jwt import JWTToken
+from schemas.user import UserRead, LoginResult
 from util.jwt import generate_jwt_token
 from model.mongo import User
 from schemas import UserLogin, UserRegister
@@ -13,14 +14,18 @@ class UserService:
     def __init__(self, user_repository: UserRepository):
         self.user_repository = user_repository
 
-    async def login(self, user_login: UserLogin):
+    async def login(self, user_login: UserLogin) -> LoginResult:
         user = await User.find_one(
             {"$and": [{"email": user_login.email}, {"password": user_login.password}]}
         )
         if user is None:
             raise HTTPException(status_code=404, detail="User not found")
         token = generate_jwt_token(user)
-        return {"token": token}
+        jwt_token = JWTToken(access_token=token)
+        return LoginResult(
+            user=UserRead(id=user.id, email=user.email, username=user.username),
+            credentials=jwt_token,
+        )
 
     async def register(self, user_register: UserRegister):
         user = await User.find_one({"email": user_register.email})

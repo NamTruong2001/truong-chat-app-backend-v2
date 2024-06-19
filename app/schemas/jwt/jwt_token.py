@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 class JWTToken(BaseModel):
     access_token: str
-    access_token_expires: timedelta
+    # access_token_expires: timedelta
 
 
 class RefreshToken(JWTToken):

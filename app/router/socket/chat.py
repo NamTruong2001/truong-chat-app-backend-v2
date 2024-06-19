@@ -73,14 +73,12 @@ class ChatSocket(AsyncNamespace):
                         else:
                             online_status["online"] = False
                         online_status_private_chat_participants.append(online_status)
-        print(f"length:  {len(updated_user_connections)}")
         await asyncio.gather(*emit_presence_tasks)
         await self.emit(
             "presence", data=online_status_private_chat_participants, to=sid
         )
 
     async def on_disconnect(self, sid):
-        print(sid, "disconnected")
         user_session = await self.get_session(sid)
         user_id = user_session["user_id"]
 
@@ -95,21 +93,18 @@ class ChatSocket(AsyncNamespace):
             #     is_all=True,
             # )
             for room in self.rooms(sid=sid):
-                print(room)
-                print(room.split("private_"))
-                if "private_" in room:
-                    emit_presence_tasks.append(
-                        self.emit(
-                            event="presence",
-                            room=room.split("private_")[1],
-                            skip_sid=list(updated_user_connections),
-                            data={
-                                "conversation_id": room,
-                                "user": str(user_id),
-                                "is_online": False,
-                            },
-                        )
+                emit_presence_tasks.append(
+                    self.emit(
+                        event="presence",
+                        room=room,
+                        skip_sid=list(updated_user_connections),
+                        data={
+                            "conversation_id": room,
+                            "user": str(user_id),
+                            "is_online": False,
+                        },
                     )
+                )
         await asyncio.gather(*emit_presence_tasks)
 
     async def on_message(self, sid, data):
