@@ -37,38 +37,32 @@ class UserService:
             id=new_user.id, email=new_user.email, username=new_user.username
         )
 
-    async def is_user_online(self, user_id: str) -> bool:
-        return await self.user_repository.is_user_online(user_id)
+    def is_user_online(self, user_id: str) -> bool:
+        return self.user_repository.is_user_online(user_id)
 
-    async def _add_online_user(self, user_id: str):
-        return await self.user_repository.add_online_user(user_id)
+    def _add_online_user(self, user_id: str):
+        return self.user_repository.add_online_user(user_id)
 
-    async def _remove_online_user(self, user_id: str):
-        return await self.user_repository.remove_online_user(user_id)
+    def _remove_online_user(self, user_id: str):
+        return self.user_repository.remove_online_user(user_id)
 
-    async def manage_user_socket_connection(
+    def manage_user_socket_connection(
         self, user_id: str, socket_id: str, connect_action: SocketAction
     ):
-        user_connections = await self.user_repository.get_user_sockets(user_id)
+        user_connections = self.user_repository.get_user_sockets(user_id)
         if len(user_connections) >= 1 and connect_action == SocketAction.CONNECT:
-            await self.user_repository.add_user_socket(
-                user_id=user_id, socket_id=socket_id
-            )
-            return
+            self.user_repository.add_user_socket(user_id=user_id, socket_id=socket_id)
 
         if len(user_connections) < 1 and connect_action == SocketAction.CONNECT:
-            await self.user_repository.add_online_user(user_id=user_id)
-            await self.user_repository.add_user_socket(
-                user_id=user_id, socket_id=socket_id
-            )
-            return
+            self.user_repository.add_online_user(user_id=user_id)
+            self.user_repository.add_user_socket(user_id=user_id, socket_id=socket_id)
 
         if len(user_connections) > 1 and connect_action == SocketAction.DISCONNECT:
-            await self.user_repository.remove_user_socket(
+            self.user_repository.remove_user_socket(
                 user_id=user_id, socket_id=socket_id
             )
-            return
 
         if len(user_connections) <= 1 and connect_action == SocketAction.DISCONNECT:
-            await self.user_repository.remove_online_user(user_id=user_id)
-            return
+            self.user_repository.remove_online_user(user_id=user_id)
+            self.user_repository.remove_user_socket_key(user_id)
+        return self.user_repository.get_user_sockets(user_id)

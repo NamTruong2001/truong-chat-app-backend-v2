@@ -11,4 +11,12 @@ mongo_uri = (
 
 async def initialize_mongo_with_beanie():
     client = AsyncIOMotorClient(mongo_uri)  # type: ignore[attr-defined]
-    await init_beanie(client[settings.mongo_db_name], document_models=__beanie_models__)  # type: ignore[arg-type,attr-defined]
+    try:
+        info = await client.server_info()
+        print("Successfully connected to the mongo server")
+        print("Server info:", info)
+        await init_beanie(client[settings.mongo_db_name], document_models=__beanie_models__)  # type: ignore[arg-type,attr-defined]
+        return client
+    except Exception as e:
+        print("Failed to connect to the mongo server")
+        print("Error:", e)

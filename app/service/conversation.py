@@ -33,7 +33,7 @@ class ConversationService:
             }
         ).first_or_none()
         if not conversation:
-            raise ConversationNotFound(conversation_id)
+            raise HTTPException(status_code=400, detail="Conversation not found")
         return conversation
 
     async def get_user_conversation_sort_by_latest_message(self, user: UserRead):
@@ -137,6 +137,10 @@ class ConversationService:
             if not added_participants:
                 raise ParticipantAlreadyExists("Participants already exist")
             await conversation.save()
+            if self.conversation_repository.is_conversation_cached(conversation_id):
+                self.conversation_repository.add_user_id_to_conversation(
+                    conversation_id=conversation_id, user_id=add_user_ids
+                )
             return conversation
         except ParticipantAlreadyExists as pae:
             raise HTTPException(status_code=400, detail=str(pae))
@@ -156,6 +160,10 @@ class ConversationService:
             if not removed_participants:
                 raise ParticipantNotFound("Participants not found")
             await conversation.save()
+            if self.conversation_repository.is_conversation_cached(conversation_id):
+                self.conversation_repository.remove_user_id_from_conversation(
+                    conversation_id=conversation_id, user_id=remove_user_ids
+                )
             return conversation
         except ParticipantNotFound as pnf:
             raise HTTPException(status_code=400, detail=str(pnf))
@@ -182,6 +190,11 @@ class ConversationService:
 
     async def leave_conversation(self, user: UserRead, conversation_id: str):
         try:
+            is_in = self.is_user_in_conversation(
+                user_id=str(user.id), conversation_id=conversation_id
+            )
+            if not is_in:
+                raise ConversationNotFound("Conversation not found")
             conversation = await self.get_conversation_by_user_and_conversation_id(
                 conversation_id=conversation_id, user_id=str(user.id)
             )
@@ -201,7 +214,7 @@ class ConversationService:
 
     async def is_user_in_conversation(self, user_id: str, conversation_id: str):
         if self.conversation_repository.is_conversation_cached(conversation_id):
-            is_in = await self.conversation_repository.is_user_in_cached_conversation(
+            is_in = self.conversation_repository.is_user_in_cached_conversation(
                 user_id=user_id, conversation_id=conversation_id
             )
             return is_in
@@ -210,9 +223,33 @@ class ConversationService:
                 conversation = await self.get_conversation_by_user_and_conversation_id(
                     user_id=user_id, conversation_id=conversation_id
                 )
-                await self.conversation_repository.cache_conversation_participants(
-                    conversation_id=str(conversation.id), participant_ids=[user_id]
+                self.conversation_repository.cache_conversation_participants(
+                    conversation_id=str(conversation.id),
+                    participant_ids=[
+                        str(participant.user_id)
+                        for participant in conversation.participants
+                    ],
                 )
                 return True
             except ConversationNotFound:
                 return False
+
+    async def get_private_conversation_by_another_user_id(
+        self, user_id: str, current_user: UserRead
+    ):
+        conversation = await Conversation.find(
+            {
+                "$and": [
+                    {
+                        "participants": {
+                            "$all": [
+                                {"$elemMatch": {"user_id": PydanticObjectId(user_id)}},
+                                {"$elemMatch": {"user_id": current_user.id}},
+                            ]
+                        }
+                    },
+                    {"participants": {"$size": 2}},
+                ]
+            }
+        ).first_or_none()
+        return conversation
