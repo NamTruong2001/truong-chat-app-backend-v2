@@ -3,6 +3,7 @@ from typing import List
 from pydantic import BaseModel
 
 from model.mongo import Conversation, Message
+from schemas.enums import ConversationEnum
 
 
 class ConversationWithLatestMessage(Conversation):
@@ -30,7 +31,7 @@ class AddParticipantsRequest(BaseModel):
 
 class CreateConversationRequest(BaseModel):
     title: str
-    conversation_type: str = "group"
+    conversation_type: ConversationEnum
     participant_ids: List[str]
 
     class Config:

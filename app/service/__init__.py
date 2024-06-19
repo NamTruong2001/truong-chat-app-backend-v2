@@ -1,2 +1,2 @@
 from .conversation import ConversationService
-from .chat import ChatService
+from .chat import MessageService

@@ -5,18 +5,19 @@ from fastapi.encoders import jsonable_encoder
 from pydantic import ValidationError
 from socketio import AsyncNamespace
 
+from exceptions import MessageSentError
 from schemas import MessageRequest
-from schemas.enums import ConversationEnum
+from schemas.enums import ConversationEnum, SocketAction
 from service.user import UserService
 from util import validate_socket_connection
-from service import ConversationService, ChatService
+from service import ConversationService, MessageService
 
 
 class ChatSocket(AsyncNamespace):
     def __init__(
         self,
         name_space: str,
-        chat_service: ChatService,
+        chat_service: MessageService,
         conversation_service: ConversationService,
         user_service: UserService,
     ):
@@ -30,33 +31,36 @@ class ChatSocket(AsyncNamespace):
         # print("Connected")
         user = validate_socket_connection(auth)
         await self.save_session(sid, {"user_id": str(user.id)})
-        self.user_service.add_online_user(str(user.id))
+        updated_user_connections = self.user_service.manage_user_socket_connection(
+            user_id=str(user.id), socket_id=sid, connect_action=SocketAction.CONNECT
+        )
 
         conversations = await self.conversation_service.get_user_conversations(
             user_id=str(user.id),
             conversation_type=ConversationEnum.PRIVATE,
             is_all=True,
         )
+
         online_status_private_chat_participants = []
         emit_presence_tasks = []
         for conversation in conversations:
-            self.enter_room(sid=sid, room=str(conversation.id))
+            self.enter_room(sid=sid, room=f"{str(conversation.id)}")
             # only notify online status in private conversation
             if conversation.type == ConversationEnum.PRIVATE:
                 str_conversation_id = str(conversation.id)
-                task = asyncio.create_task(
-                    self.emit(
-                        event="presence",
-                        room=str_conversation_id,
-                        skip_sid=sid,
-                        data={
-                            "conversation_id": str_conversation_id,
-                            "user": str(user.id),
-                            "is_online": True,
-                        },
+                if len(updated_user_connections) == 1:
+                    emit_presence_tasks.append(
+                        self.emit(
+                            event="presence",
+                            room=str_conversation_id,
+                            skip_sid=sid,
+                            data={
+                                "conversation_id": str_conversation_id,
+                                "user": str(user.id),
+                                "is_online": True,
+                            },
+                        )
                     )
-                )
-                emit_presence_tasks.append(task)
                 # get the online status of participants in each user private conversations
                 for participant in conversation.participants:
                     online_status = {
@@ -75,8 +79,33 @@ class ChatSocket(AsyncNamespace):
         )
 
     async def on_disconnect(self, sid):
-        print(sid, "disconnected")
-        self.user_service.remove_online_user(sid)
+        user_session = await self.get_session(sid)
+        user_id = user_session["user_id"]
+
+        updated_user_connections = self.user_service.manage_user_socket_connection(
+            user_id=str(user_id), socket_id=sid, connect_action=SocketAction.DISCONNECT
+        )
+        emit_presence_tasks = []
+        if len(updated_user_connections) == 0:
+            # conversations = await self.conversation_service.get_user_conversations(
+            #     user_id=str(user_id),
+            #     conversation_type=ConversationEnum.PRIVATE,
+            #     is_all=True,
+            # )
+            for room in self.rooms(sid=sid):
+                emit_presence_tasks.append(
+                    self.emit(
+                        event="presence",
+                        room=room,
+                        skip_sid=list(updated_user_connections),
+                        data={
+                            "conversation_id": room,
+                            "user": str(user_id),
+                            "is_online": False,
+                        },
+                    )
+                )
+        await asyncio.gather(*emit_presence_tasks)
 
     async def on_message(self, sid, data):
         try:
@@ -99,10 +128,12 @@ class ChatSocket(AsyncNamespace):
                     }
                 },
             )
+        except MessageSentError as mse:
+            await self.emit(
+                event="message",
+                to=sid,
+                data={"error": {"message": mse.message, "details": {}}},
+            )
 
     async def on_presence(self, sid, data):
         print(data)
-
-    async def on_disconnect(self, sid):
-        print("Disconnected")
-        print(sid)

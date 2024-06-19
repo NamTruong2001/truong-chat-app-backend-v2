@@ -10,13 +10,15 @@ from exceptions import (
     ParticipantAlreadyExists,
     ParticipantNotFound,
 )
+from repository import ConversationRepository
 from schemas.conversation import ConversationWithLatestMessage
 from schemas.enums import ConversationEnum
 from schemas.user import UserRead
 
 
 class ConversationService:
-    def __init__(self):
+    def __init__(self, conversation_repository: ConversationRepository):
+        self.conversation_repository = conversation_repository
         pass
 
     async def get_conversation_by_user_and_conversation_id(
@@ -31,7 +33,7 @@ class ConversationService:
             }
         ).first_or_none()
         if not conversation:
-            raise ConversationNotFound(conversation_id)
+            raise HTTPException(status_code=400, detail="Conversation not found")
         return conversation
 
     async def get_user_conversation_sort_by_latest_message(self, user: UserRead):
@@ -135,6 +137,10 @@ class ConversationService:
             if not added_participants:
                 raise ParticipantAlreadyExists("Participants already exist")
             await conversation.save()
+            if self.conversation_repository.is_conversation_cached(conversation_id):
+                self.conversation_repository.add_user_id_to_conversation(
+                    conversation_id=conversation_id, user_id=add_user_ids
+                )
             return conversation
         except ParticipantAlreadyExists as pae:
             raise HTTPException(status_code=400, detail=str(pae))
@@ -147,11 +153,6 @@ class ConversationService:
         self, conversation_id: str, remove_user_ids: list[str], current_user: UserRead
     ):
         try:
-            # remove_users = await User.find(
-            #     In(User.id, [PydanticObjectId(user_id) for user_id in remove_user_ids])
-            # ).to_list()
-            # if not remove_users:
-            #     raise UserNotFound("")
             conversation = await self.get_conversation_by_user_and_conversation_id(
                 conversation_id=conversation_id, user_id=str(current_user.id)
             )
@@ -159,6 +160,10 @@ class ConversationService:
             if not removed_participants:
                 raise ParticipantNotFound("Participants not found")
             await conversation.save()
+            if self.conversation_repository.is_conversation_cached(conversation_id):
+                self.conversation_repository.remove_user_id_from_conversation(
+                    conversation_id=conversation_id, user_id=remove_user_ids
+                )
             return conversation
         except ParticipantNotFound as pnf:
             raise HTTPException(status_code=400, detail=str(pnf))
@@ -183,14 +188,68 @@ class ConversationService:
         conversations = await Conversation.find(search_criteria).to_list()
         return conversations
 
-    async def get_participants_ids_from_all_user_private_conversations(
-        self, user_id: str
+    async def leave_conversation(self, user: UserRead, conversation_id: str):
+        try:
+            is_in = self.is_user_in_conversation(
+                user_id=str(user.id), conversation_id=conversation_id
+            )
+            if not is_in:
+                raise ConversationNotFound("Conversation not found")
+            conversation = await self.get_conversation_by_user_and_conversation_id(
+                conversation_id=conversation_id, user_id=str(user.id)
+            )
+            removed_participants = conversation.remove_participant([str(user.id)])
+            if not removed_participants:
+                raise ParticipantNotFound("Participants not found")
+            await conversation.save()
+            return conversation
+        except ParticipantNotFound as pnf:
+            raise HTTPException(status_code=400, detail=str(pnf))
+        except ConversationNotFound as cnf:
+            raise HTTPException(status_code=400, detail=str(cnf))
+        except UserNotFound as unf:
+            raise HTTPException(status_code=400, detail=str(unf))
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    async def is_user_in_conversation(self, user_id: str, conversation_id: str):
+        if self.conversation_repository.is_conversation_cached(conversation_id):
+            is_in = self.conversation_repository.is_user_in_cached_conversation(
+                user_id=user_id, conversation_id=conversation_id
+            )
+            return is_in
+        else:
+            try:
+                conversation = await self.get_conversation_by_user_and_conversation_id(
+                    user_id=user_id, conversation_id=conversation_id
+                )
+                self.conversation_repository.cache_conversation_participants(
+                    conversation_id=str(conversation.id),
+                    participant_ids=[
+                        str(participant.user_id)
+                        for participant in conversation.participants
+                    ],
+                )
+                return True
+            except ConversationNotFound:
+                return False
+
+    async def get_private_conversation_by_another_user_id(
+        self, user_id: str, current_user: UserRead
     ):
-        conversations = await self.get_user_conversations(
-            user_id=user_id, conversation_type=ConversationEnum.PRIVATE
-        )
-        participants_ids = []
-        for conversation in conversations:
-            for participant in conversation.participants:
-                participants_ids.append(str(participant.user_id))
-        return participants_ids
+        conversation = await Conversation.find(
+            {
+                "$and": [
+                    {
+                        "participants": {
+                            "$all": [
+                                {"$elemMatch": {"user_id": PydanticObjectId(user_id)}},
+                                {"$elemMatch": {"user_id": current_user.id}},
+                            ]
+                        }
+                    },
+                    {"participants": {"$size": 2}},
+                ]
+            }
+        ).first_or_none()
+        return conversation

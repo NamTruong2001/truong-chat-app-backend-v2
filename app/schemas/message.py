@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from model.mongo import Attachment
 
@@ -31,3 +31,9 @@ class MessageInResponse(MessageRequest):
     # updated_at: str
     # class Config:
     #     orm_mode = True
+
+
+class GetConversationMessagesWithPage(BaseModel):
+    conversation_id: str
+    page: int = Field(gt=0, default=1)
+    page_size: int = Field(gt=0, default=30)

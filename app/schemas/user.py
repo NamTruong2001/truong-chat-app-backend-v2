@@ -1,5 +1,6 @@
 from beanie import PydanticObjectId
 from pydantic import BaseModel
+from .jwt import JWTToken
 
 
 class UserLogin(BaseModel):
@@ -17,3 +18,8 @@ class UserRead(BaseModel):
     id: PydanticObjectId
     email: str
     username: str
+
+
+class LoginResult(BaseModel):
+    user: UserRead
+    credentials: JWTToken
