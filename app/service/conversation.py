@@ -11,9 +11,13 @@ from exceptions import (
     ParticipantNotFound,
 )
 from repository import ConversationRepository
-from schemas.conversation import ConversationWithLatestMessage
+from schemas.conversation import ConversationResponse
 from schemas.enums import ConversationEnum
 from schemas.user import UserRead
+from util.aggregate_criteria import (
+    conversation_participant_user_map,
+    conversation_with_latest_message_map,
+)
 
 
 class ConversationService:
@@ -45,51 +49,12 @@ class ConversationService:
         """
         conversations = await Conversation.aggregate(
             [
-                {
-                    "$match": {
-                        "participants": {
-                            "$elemMatch": {"user_id": PydanticObjectId(user.id)}
-                        }
-                    }
-                },
-                {
-                    "$lookup": {
-                        "from": "Message",
-                        "let": {"conversationId": "$_id"},
-                        "pipeline": [
-                            {
-                                "$match": {
-                                    "$expr": {
-                                        "$eq": ["$conversation_id", "$$conversationId"]
-                                    }
-                                }
-                            },
-                            {"$sort": {"created_at": -1}},
-                            {"$limit": 1},
-                        ],
-                        "as": "latest_message",
-                    }
-                },
-                {
-                    "$addFields": {
-                        "newestMessage": {"$arrayElemAt": ["$latest_message", 0]}
-                    }
-                },
-                {
-                    "$project": {
-                        "_id": 1,
-                        "title": 1,
-                        "creator": 1,
-                        "created_at": 1,
-                        "deleted_at": 1,
-                        "type": 1,
-                        "participants": 1,
-                        "latest_message": 1,
-                    }
-                },
+                {"$match": {"participants.user_id": PydanticObjectId(user.id)}},
+                *conversation_participant_user_map,
+                *conversation_with_latest_message_map,
                 {"$sort": {"latest_message.created_at": -1}},
             ],
-            projection_model=ConversationWithLatestMessage,
+            projection_model=ConversationResponse,
         ).to_list()
         return conversations
 
@@ -237,19 +202,29 @@ class ConversationService:
     async def get_private_conversation_by_another_user_id(
         self, user_id: str, current_user: UserRead
     ):
-        conversation = await Conversation.find(
-            {
-                "$and": [
-                    {
-                        "participants": {
-                            "$all": [
-                                {"$elemMatch": {"user_id": PydanticObjectId(user_id)}},
-                                {"$elemMatch": {"user_id": current_user.id}},
-                            ]
-                        }
-                    },
-                    {"participants": {"$size": 2}},
-                ]
-            }
-        ).first_or_none()
+        conversation = await Conversation.aggregate(
+            [
+                {
+                    "$match": {
+                        "$and": [
+                            {
+                                "participants": {
+                                    "$all": [
+                                        {
+                                            "$elemMatch": {
+                                                "user_id": PydanticObjectId(user_id)
+                                            }
+                                        },
+                                        {"$elemMatch": {"user_id": current_user.id}},
+                                    ]
+                                }
+                            },
+                            {"participants": {"$size": 2}},
+                        ]
+                    }
+                },
+                *conversation_participant_user_map,
+            ],
+            projection_model=ConversationResponse,
+        ).to_list()
         return conversation

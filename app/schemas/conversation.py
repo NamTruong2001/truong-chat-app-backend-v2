@@ -1,13 +1,21 @@
-from typing import List
+from datetime import datetime
+from typing import List, Union
 
 from pydantic import BaseModel
 
 from model.mongo import Conversation, Message
+from schemas import UserRead
 from schemas.enums import ConversationEnum
 
 
-class ConversationWithLatestMessage(Conversation):
-    latest_message: List[Message]
+class ParticipantUser(BaseModel):
+    joined_at: datetime
+    user: UserRead
+
+
+class ConversationResponse(Conversation):
+    participants: List[ParticipantUser]
+    latest_message: Union[List[Message], None] = None
 
     class Config:
         from_attributes = True
