@@ -1,5 +1,3 @@
-from contextlib import asynccontextmanager
-
 import socketio
 import uvicorn
 from fastapi import FastAPI
@@ -11,15 +9,16 @@ from router.http.auth import AuthRouter
 from router.http.conversation import ConversationRouter
 from router.http.message import MessageRouter
 from router.http.register import SignUpRouter
-from router.http.test import TestRouter
 from router.socket import ChatSocket
 from service import ConversationService, MessageService
 from db.mongo import initialize_mongo_with_beanie
 from service.user import UserService
 from db.redis import connect_to_redis_with_retry
+from parser import args
+from util import get_settings
 
 fapp = FastAPI()
-
+settings = get_settings()
 fapp.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -28,9 +27,14 @@ fapp.add_middleware(
     allow_headers=["*"],
 )
 
-mgr = socketio.AsyncRedisManager()
+mgr = socketio.AsyncRedisManager(
+    f"redis://{settings.redis_user}:{settings.redis_password}@{settings.redis_host}:{settings.redis_port}"
+)
 sio = socketio.AsyncServer(
-    cors_allowed_origins="*", async_mode="asgi", client_manager=mgr
+    cors_allowed_origins="*",
+    async_mode="asgi",
+    client_manager=mgr,
+    engineio_logger=True,
 )
 app = socketio.ASGIApp(sio, fapp)
 redis_client = connect_to_redis_with_retry()
@@ -85,4 +89,6 @@ def shutdown_event():
 
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, log_level="info", reload=True)
+    uvicorn.run(
+        "main:app", host="0.0.0.0", port=args.port, log_level="info", reload=True
+    )

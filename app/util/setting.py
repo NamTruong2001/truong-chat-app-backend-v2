@@ -1,7 +1,7 @@
 import sys
 from functools import lru_cache
-
 from pydantic_settings import SettingsConfigDict, BaseSettings
+from parser import args
 
 
 class Settings(BaseSettings):
@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     allowed_video_type: list[str] = ["video/mp4"]
 
     model_config = SettingsConfigDict(
-        env_file=f".././.{sys.argv[1] if len(sys.argv) > 1 else 'local'}"
+        env_file=f".././.{args.environ if len(sys.argv) > 1 else 'local'}"
     )
 
 

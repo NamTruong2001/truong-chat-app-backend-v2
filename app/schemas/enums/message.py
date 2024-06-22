@@ -1,9 +1,12 @@
 from enum import Enum
 
 
-class MessageType(str, Enum):
+class UserMessageType(str, Enum):
     TEXT = "text"
     IMAGE = "image"
     VIDEO = "video"
     FILE = "file"
-    SYSTEM = "system"
+
+
+class SystemMessageType(str, Enum):
+    SYSTEM_TEXT = "system"

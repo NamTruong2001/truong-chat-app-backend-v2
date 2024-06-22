@@ -138,9 +138,9 @@ class ConversationService:
             raise HTTPException(status_code=400, detail=str(unf))
 
     async def get_user_conversations(
-        self, user_id: str, conversation_type: ConversationEnum, is_all: bool = False
+        self, user_id: str, conversation_type: ConversationEnum
     ):
-        if is_all is True:
+        if conversation_type is ConversationEnum.ALL:
             search_criteria = {"participants.user_id": PydanticObjectId(user_id)}
         else:
             search_criteria = {

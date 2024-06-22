@@ -20,4 +20,12 @@ class Message(Document):
 
     class Settings:
         collection = "messages"
-        indexes = ["conversation_id", "sender", "created_at"]
+        indexes = ["conversation_id", "sender_id", "created_at"]
+
+
+class SystemMessage(Message):
+    pass
+
+
+class UserMessage(Message):
+    pass

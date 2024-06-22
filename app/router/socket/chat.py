@@ -6,7 +6,7 @@ from pydantic import ValidationError
 from socketio import AsyncNamespace
 
 from exceptions import MessageSentError
-from schemas import MessageRequest
+from schemas import UserMessageRequest
 from schemas.enums import ConversationEnum, SocketAction
 from service.user import UserService
 from util import validate_socket_connection
@@ -37,8 +37,7 @@ class ChatSocket(AsyncNamespace):
 
         conversations = await self.conversation_service.get_user_conversations(
             user_id=str(user.id),
-            conversation_type=ConversationEnum.PRIVATE,
-            is_all=True,
+            conversation_type=ConversationEnum.ALL,
         )
 
         online_status_private_chat_participants = []
@@ -110,7 +109,9 @@ class ChatSocket(AsyncNamespace):
     async def on_message(self, sid, data):
         try:
             user_session = await self.get_session(sid)
-            message_request = MessageRequest(**data, sender_id=user_session["user_id"])
+            message_request = UserMessageRequest(
+                **data, sender_id=user_session["user_id"]
+            )
             saved_message = await self.chat_service.save_message(message_request)
             await self.emit(
                 "message",

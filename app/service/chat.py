@@ -1,7 +1,7 @@
 from beanie import PydanticObjectId
 
 from exceptions import MessageSentError
-from schemas import MessageRequest, GetConversationMessagesWithPage, UserRead
+from schemas import UserMessageRequest, GetConversationMessagesWithPage, UserRead
 from service import ConversationService
 from model.mongo import Message
 
@@ -11,7 +11,7 @@ class MessageService:
         self.conversation_service = conversation_service
         pass
 
-    async def save_message(self, message: MessageRequest):
+    async def save_message(self, message: UserMessageRequest):
         is_in = await self.conversation_service.is_user_in_conversation(
             user_id=message.sender_id, conversation_id=message.conversation_id
         )
