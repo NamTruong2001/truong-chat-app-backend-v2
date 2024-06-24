@@ -3,7 +3,7 @@ from beanie.odm.operators.find.comparison import In
 from bson import ObjectId
 from fastapi import HTTPException
 
-from model.mongo import Conversation, Participant, User
+from model.mongo import Conversation, Participant, User, Message
 from exceptions import (
     ConversationNotFound,
     UserNotFound,
@@ -11,7 +11,7 @@ from exceptions import (
     ParticipantNotFound,
 )
 from repository import ConversationRepository
-from schemas.conversation import ConversationResponse
+from schemas.conversation import ConversationWithLatestMessageAndUser, ParticipantUser
 from schemas.enums import ConversationEnum
 from schemas.user import UserRead
 from util.aggregate_criteria import (
@@ -40,6 +40,27 @@ class ConversationService:
             raise HTTPException(status_code=400, detail="Conversation not found")
         return conversation
 
+    def _map_message_with_latest_message(
+        self, messages: list[Message], conversations: list[Conversation]
+    ):
+        id_conversation = {
+            conversation.id: ConversationWithLatestMessageAndUser(
+                id=conversation.id,
+                title=conversation.title,
+                creator=conversation.creator,
+                created_at=conversation.created_at,
+                type=conversation.type,
+                participants=[
+                    *conversation.participants,
+                ],
+            )
+            for conversation in conversations
+        }
+        for message in messages:
+            id_conversation[message.conversation_id].latest_message.append(message)
+
+        return list(id_conversation.values())
+
     async def get_user_conversation_sort_by_latest_message(self, user: UserRead):
         """
         :param user:
@@ -54,9 +75,20 @@ class ConversationService:
                 *conversation_with_latest_message_map,
                 {"$sort": {"latest_message.created_at": -1}},
             ],
-            projection_model=ConversationResponse,
+            projection_model=ConversationWithLatestMessageAndUser,
         ).to_list()
-        return conversations
+        latest_message_ids = [
+            message.id
+            for conversation in conversations
+            for message in conversation.latest_message
+        ]
+        latest_messages = await Message.find(
+            In(Message.id, latest_message_ids), with_children=True
+        ).to_list()
+        conversations_message = self._map_message_with_latest_message(
+            messages=latest_messages, conversations=conversations
+        )
+        return conversations_message
 
     async def create_conversation(
         self,
@@ -225,6 +257,6 @@ class ConversationService:
                 },
                 *conversation_participant_user_map,
             ],
-            projection_model=ConversationResponse,
+            projection_model=ConversationWithLatestMessageAndUser,
         ).to_list()
         return conversation

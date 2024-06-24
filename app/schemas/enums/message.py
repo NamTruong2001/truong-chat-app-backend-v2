@@ -9,4 +9,4 @@ class UserMessageType(str, Enum):
 
 
 class SystemMessageType(str, Enum):
-    SYSTEM_TEXT = "system"
+    SYSTEM_TEXT = "system_text"

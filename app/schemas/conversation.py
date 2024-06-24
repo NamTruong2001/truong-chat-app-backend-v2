@@ -1,9 +1,9 @@
 from datetime import datetime
 from typing import List, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from model.mongo import Conversation, Message
+from model.mongo import Conversation, Message, UserMessage, SystemMessage
 from schemas import UserRead
 from schemas.enums import ConversationEnum
 
@@ -13,9 +13,12 @@ class ParticipantUser(BaseModel):
     user: UserRead
 
 
-class ConversationResponse(Conversation):
+class ConversationWithLatestMessageAndUser(Conversation):
     participants: List[ParticipantUser]
-    latest_message: Union[List[Message], None] = None
+    latest_message: list[Union[SystemMessage, UserMessage, Message]] = Field(
+        default_factory=list,
+        discriminator="type",
+    )
 
     class Config:
         from_attributes = True

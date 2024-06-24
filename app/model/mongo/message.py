@@ -3,6 +3,7 @@ from typing import Optional
 
 from beanie import Document, Link, PydanticObjectId
 from pydantic import Field, BaseModel
+from schemas.enums import UserMessageType, SystemMessageType
 
 
 class Attachment(BaseModel):
@@ -12,20 +13,21 @@ class Attachment(BaseModel):
 
 class Message(Document):
     conversation_id: PydanticObjectId
-    sender_id: PydanticObjectId
-    type: str
-    content: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
     attachment: Optional[Attachment] = None
 
     class Settings:
+        is_root = True
         collection = "messages"
         indexes = ["conversation_id", "sender_id", "created_at"]
 
 
 class SystemMessage(Message):
-    pass
+    system_type: SystemMessageType
+    system_content: dict
 
 
 class UserMessage(Message):
-    pass
+    type: UserMessageType
+    sender_id: PydanticObjectId
+    content: str

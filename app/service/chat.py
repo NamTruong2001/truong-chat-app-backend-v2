@@ -3,7 +3,7 @@ from beanie import PydanticObjectId
 from exceptions import MessageSentError
 from schemas import UserMessageRequest, GetConversationMessagesWithPage, UserRead
 from service import ConversationService
-from model.mongo import Message
+from model.mongo import Message, UserMessage, SystemMessage
 
 
 class MessageService:
@@ -17,7 +17,7 @@ class MessageService:
         )
         if not is_in:
             raise MessageSentError(message="Conversation not found", conversation={})
-        saved_message = Message(
+        saved_message = UserMessage(
             sender_id=PydanticObjectId(message.sender_id),
             conversation_id=PydanticObjectId(message.conversation_id),
             content=message.content,
@@ -39,11 +39,13 @@ class MessageService:
         messages = (
             await Message.find(
                 Message.conversation_id == PydanticObjectId(request.conversation_id),
+                with_children=True,
             )
             .sort(-Message.created_at)
             .skip((request.page - 1) * request.page_size)
             .limit(request.page_size)
             .to_list()
         )
+        print(messages)
 
         return messages

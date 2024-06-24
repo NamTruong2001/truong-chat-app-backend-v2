@@ -3,9 +3,17 @@ from datetime import datetime
 
 from motor.motor_asyncio import AsyncIOMotorClient
 from beanie import init_beanie, WriteRules, PydanticObjectId
-from model.mongo import Message, User, Conversation, Participant, Attachment
+from model.mongo import (
+    Message,
+    User,
+    Conversation,
+    Participant,
+    SystemMessage,
+    UserMessage,
+)
 from bson import ObjectId
 from db.mongo import initialize_mongo_with_beanie
+from schemas.enums import SystemMessageType, UserMessageType
 from service import ConversationService
 
 settings = {"db_name": "chat_app_testing", "uri": "mongodb://localhost:27017"}
@@ -19,11 +27,15 @@ async def data_test_for_conversation():
     )
     user1 = await User.find_one(User.username == "User1")
     if user1 is None:
-        user1 = User(username="User1", email="user1@gmail.com", password="123456", is_active=True)
+        user1 = User(
+            username="User1", email="user1@gmail.com", password="123456", is_active=True
+        )
         await user1.insert()
     user2 = await User.find_one(User.username == "User2")
     if user2 is None:
-        user2 = User(username="User2", email="user2@gmail.com", password="123456", is_active=True)
+        user2 = User(
+            username="User2", email="user2@gmail.com", password="123456", is_active=True
+        )
         await user2.insert()
     participant1 = Participant(user_id=user1.id)
     participant2 = Participant(user_id=user2.id)
@@ -64,11 +76,17 @@ async def init_test_data():
         database=client.chat_testing,
         document_models=[Message, User, Conversation],
     )
-    user1 = User(username="User1", email="user1@gmail.com", password="123456", is_active=True)
+    user1 = User(
+        username="User1", email="user1@gmail.com", password="123456", is_active=True
+    )
     await user1.insert()
-    user2 = User(username="User2", email="user2@gmail.com", password="123456", is_active=True)
+    user2 = User(
+        username="User2", email="user2@gmail.com", password="123456", is_active=True
+    )
     await user2.insert()
-    user3 = User(username="User3", email="user3@gmail.com", password="123456", is_active=True)
+    user3 = User(
+        username="User3", email="user3@gmail.com", password="123456", is_active=True
+    )
     await user3.insert()
     participant1 = Participant(user_id=user1.id)
     participant2 = Participant(user_id=user2.id)
@@ -89,28 +107,28 @@ async def init_test_data():
     await conversation2.insert()
 
     message = [
-        Message(
+        UserMessage(
             conversation_id=conversation1.id,
             sender_id=user1.id,
-            type="text",
+            type=UserMessageType.TEXT,
             content="Hello from user 1",
         ),
-        Message(
+        UserMessage(
             conversation_id=conversation1.id,
             sender_id=user2.id,
-            type="text",
+            type=UserMessageType.TEXT,
             content="Hi from user 2",
         ),
-        Message(
+        UserMessage(
             conversation_id=conversation2.id,
             sender_id=user3.id,
-            type="text",
+            type=UserMessageType.TEXT,
             content="Hi from user 3",
         ),
-        Message(
+        UserMessage(
             conversation_id=conversation2.id,
             sender_id=user2.id,
-            type="text",
+            type=UserMessageType.TEXT,
             content="Hi from user 1",
         ),
     ]
@@ -140,4 +158,13 @@ if __name__ == "__main__":
         user = await User.find_one(User.username == "User1")
         print(user)
 
-    asyncio.run(init_test_data())
+    async def generate_system_messages():
+        # generate some messages of type SystemMessage
+        s = SystemMessage(
+            conversation_id=PydanticObjectId("666becdad41278ef87be0837"),
+            system_type=SystemMessageType.SYSTEM_TEXT,
+            system_content={"message": "Hello"},
+        )
+        await s.insert()
+
+    asyncio.run(generate_system_messages())
