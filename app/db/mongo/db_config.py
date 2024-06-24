@@ -6,6 +6,8 @@ from util.setting import get_settings
 settings = get_settings()
 mongo_uri = (
     f"mongodb://{settings.mongo_host}:{settings.mongo_port}/{settings.mongo_port}"
+    if settings.mongo_host == "localhost"
+    else f"mongodb+srv://{settings.mongo_user}:{settings.mongo_password}@{settings.mongo_host}/{settings.mongo_port}"
 )
 
 
