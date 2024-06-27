@@ -22,6 +22,7 @@ def connect_to_redis_with_retry() -> Redis:
         )
         # Try a simple command to check the connection
         redis_client.ping()
+        print("Connected to redis server!")
     except ConnectionError as e:
         print(f"Failed to connect to Redis server")
         print(e)

@@ -1,0 +1,72 @@
+[{
+  "_id": {
+    "$oid": "666becdad41278ef87be0833"
+  },
+  "username": "User1",
+  "password": "123456",
+  "email": "user1@gmail.com",
+  "is_active": true,
+  "created_at": {
+    "$date": "2024-06-14T07:10:18.746Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "666becdad41278ef87be0834"
+  },
+  "username": "User2",
+  "password": "123456",
+  "email": "user2@gmail.com",
+  "is_active": true,
+  "created_at": {
+    "$date": "2024-06-14T07:10:18.753Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "666becdad41278ef87be0835"
+  },
+  "username": "User3",
+  "password": "123456",
+  "email": "user3@gmail.com",
+  "is_active": true,
+  "created_at": {
+    "$date": "2024-06-14T07:10:18.754Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "66704814382eb3a4de322746"
+  },
+  "username": "truong",
+  "password": "123456",
+  "email": "truong@gmail.com",
+  "is_active": true,
+  "created_at": {
+    "$date": "2024-06-17T14:28:36.883Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "6670481e382eb3a4de322747"
+  },
+  "username": "khanh",
+  "password": "123456",
+  "email": "khanh@gmail.com",
+  "is_active": true,
+  "created_at": {
+    "$date": "2024-06-17T14:28:46.184Z"
+  }
+},
+{
+  "_id": {
+    "$oid": "667109438aaf25c4651dc9ba"
+  },
+  "username": "hoang",
+  "password": "123456",
+  "email": "hoang@gmail.com",
+  "is_active": true,
+  "created_at": {
+    "$date": "2024-06-18T04:12:51.096Z"
+  }
+}]
