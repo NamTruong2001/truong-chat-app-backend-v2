@@ -1,13 +1,12 @@
 from fastapi import HTTPException
 
-from exceptions import UserNotFound
 from repository.user import UserRepository
-from schemas.enums import SocketAction
-from schemas.jwt import JWTToken
-from schemas.user import UserRead, LoginResult
+from enums import SocketAction
+from model.schemas.jwt import JWTToken
+from model.schemas.user import UserRead, LoginResult
 from util.jwt import generate_jwt_token
 from model.mongo import User
-from schemas import UserLogin, UserRegister
+from model.schemas import UserLogin, UserRegister
 
 
 class UserService:

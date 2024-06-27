@@ -1,0 +1,1 @@
+chat_namespace = "/chat"

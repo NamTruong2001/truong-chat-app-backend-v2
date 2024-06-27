@@ -1,13 +1,12 @@
 import asyncio
 
-import socketio.exceptions
 from fastapi.encoders import jsonable_encoder
 from pydantic import ValidationError
 from socketio import AsyncNamespace
 
 from exceptions import MessageSentError
-from schemas import UserMessageRequest
-from schemas.enums import ConversationEnum, SocketAction
+from model.schemas import UserMessageRequest
+from enums import ConversationEnum, SocketAction
 from service.user import UserService
 from util import validate_socket_connection
 from service import ConversationService, MessageService

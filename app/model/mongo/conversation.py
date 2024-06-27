@@ -24,25 +24,20 @@ class Conversation(Document):
         collection = "conversation"
         indexes = ["creator, created_at"]
 
-    def remove_participant(self, user_id: list[str]):
-        # new_participants = [
-        #     participant
-        #     for participant in self.participants
-        #     if participant.user_id != user_id
-        # ]
-        # if len(new_participants) == len(self.participants):
-        #     raise ParticipantAlreadyExists("Participant does not exist")
-        removed_participants = [
-            participant
-            for participant in self.participants
-            if str(participant.user_id) not in user_id
-        ]
-        self.participants = removed_participants
-        return removed_participants
+    def remove_participant(self, user_ids: list[str]):
+        removed_participants = []
+        remaining_participants = []
+        for participant in self.participants:
+            if str(participant.user_id) in user_ids:
+                removed_participants.append(participant)
+            else:
+                remaining_participants.append(participant)
+        self.participants = remaining_participants
+        return removed_participants, remaining_participants
 
     def add_participant(self, user_ids: list[str]):
         participants_user_ids = [
-            participant.user_id for participant in self.participants
+            str(participant.user_id) for participant in self.participants
         ]
         new_participants = [
             Participant(user_id=PydanticObjectId(user_id))

@@ -9,6 +9,7 @@ from router.http.auth import AuthRouter
 from router.http.conversation import ConversationRouter
 from router.http.message import MessageRouter
 from router.http.register import SignUpRouter
+from router.http.test import TestRouter
 from router.socket import ChatSocket
 from service import ConversationService, MessageService
 from db.mongo import initialize_mongo_with_beanie
@@ -34,7 +35,7 @@ sio = socketio.AsyncServer(
     cors_allowed_origins="*",
     async_mode="asgi",
     client_manager=mgr,
-    engineio_logger=True,
+    # engineio_logger=True,
 )
 app = socketio.ASGIApp(sio, fapp)
 redis_client = connect_to_redis_with_retry()
@@ -51,7 +52,9 @@ async def startup_event():
 
     # service
     conversation_service = ConversationService(
-        conversation_repository=conversation_repository
+        conversation_repository=conversation_repository,
+        sio=sio,
+        user_repository=user_repository,
     )
     user_service = UserService(user_repository=user_repository)
     message_service = MessageService(conversation_service=conversation_service)
@@ -69,6 +72,8 @@ async def startup_event():
     fapp.include_router(auth_router)
     fapp.include_router(register_router)
     fapp.include_router(message_router)
+    # test_router = TestRouter(prefix="/hehe")
+    # fapp.include_router(test_router)
 
     # socket
     chat_socket = ChatSocket(
@@ -78,8 +83,6 @@ async def startup_event():
         user_service=user_service,
     )
     sio.register_namespace(chat_socket)
-    # test_router = TestRouter(prefix="/hehe")
-    # app.include_router(test_router)
 
 
 @fapp.on_event("shutdown")
