@@ -1,0 +1,156 @@
+[{
+  "_id": {
+    "$oid": "666becdad41278ef87be0836"
+  },
+  "title": "Test Conversation",
+  "creator": {
+    "$ref": "User",
+    "$id": {
+      "$oid": "666becdad41278ef87be0833"
+    }
+  },
+  "created_at": {
+    "$date": "2024-06-14T07:10:18.756Z"
+  },
+  "deleted_at": null,
+  "type": "private",
+  "participants": [
+    {
+      "user_id": {
+        "$oid": "666becdad41278ef87be0833"
+      },
+      "joined_at": {
+        "$date": "2024-06-14T07:10:18.756Z"
+      }
+    },
+    {
+      "user_id": {
+        "$oid": "666becdad41278ef87be0834"
+      },
+      "joined_at": {
+        "$date": "2024-06-14T07:10:18.756Z"
+      }
+    }
+  ]
+},
+{
+  "_id": {
+    "$oid": "666becdad41278ef87be0837"
+  },
+  "title": "Test Conversation",
+  "creator": {
+    "$ref": "User",
+    "$id": {
+      "$oid": "666becdad41278ef87be0833"
+    }
+  },
+  "created_at": {
+    "$date": "2024-06-14T07:10:18.759Z"
+  },
+  "deleted_at": null,
+  "type": "private",
+  "participants": [
+    {
+      "user_id": {
+        "$oid": "666becdad41278ef87be0833"
+      },
+      "joined_at": {
+        "$date": "2024-06-14T07:10:18.756Z"
+      }
+    },
+    {
+      "user_id": {
+        "$oid": "666becdad41278ef87be0835"
+      },
+      "joined_at": {
+        "$date": "2024-06-14T07:10:18.759Z"
+      }
+    }
+  ]
+},
+{
+  "_id": {
+    "$oid": "66705877f266db00292c010e"
+  },
+  "title": "Conversation of 3 users that has truong, user1 and user2",
+  "creator": {
+    "$ref": "User",
+    "$id": {
+      "$oid": "666becdad41278ef87be0833"
+    }
+  },
+  "created_at": {
+    "$date": "2024-06-17T15:38:31.329Z"
+  },
+  "deleted_at": null,
+  "type": "group",
+  "participants": [
+    {
+      "user_id": {
+        "$oid": "666becdad41278ef87be0834"
+      },
+      "joined_at": {
+        "$date": "2024-06-17T15:38:31.329Z"
+      }
+    },
+    {
+      "user_id": {
+        "$oid": "66704814382eb3a4de322746"
+      },
+      "joined_at": {
+        "$date": "2024-06-17T15:38:31.329Z"
+      }
+    },
+    {
+      "user_id": {
+        "$oid": "666becdad41278ef87be0833"
+      },
+      "joined_at": {
+        "$date": "2024-06-17T15:38:31.329Z"
+      }
+    }
+  ]
+},
+{
+  "_id": {
+    "$oid": "66710dc95880782cab1cbfd4"
+  },
+  "title": "hehe group",
+  "creator": {
+    "$ref": "User",
+    "$id": {
+      "$oid": "66704814382eb3a4de322746"
+    }
+  },
+  "created_at": {
+    "$date": "2024-06-18T04:32:09.246Z"
+  },
+  "deleted_at": null,
+  "type": "group",
+  "participants": [
+    {
+      "user_id": {
+        "$oid": "667109438aaf25c4651dc9ba"
+      },
+      "joined_at": {
+        "$date": "2024-06-18T04:32:09.246Z"
+      }
+    },
+    {
+      "user_id": {
+        "$oid": "6670481e382eb3a4de322747"
+      },
+      "joined_at": {
+        "$date": "2024-06-18T04:32:09.246Z"
+      }
+    },
+    {
+      "user_id": {
+        "$oid": "66704814382eb3a4de322746"
+      },
+      "joined_at": {
+        "$date": "2024-06-18T04:32:09.246Z"
+      }
+    }
+  ]
+}]
