@@ -1,9 +1,9 @@
 from datetime import datetime
 from typing import Optional
 
-from beanie import Document, Link, PydanticObjectId
+from beanie import Document, PydanticObjectId
 from pydantic import Field, BaseModel
-from schemas.enums import UserMessageType, SystemMessageType
+from enums import UserMessageType, SystemMessageType
 
 
 class Attachment(BaseModel):

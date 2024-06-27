@@ -1,4 +1,7 @@
+from beanie import PydanticObjectId
 from redis import Redis
+
+from model.mongo import User
 
 
 class UserRepository:
@@ -34,3 +37,7 @@ class UserRepository:
 
     def get_user_sockets(self, user_id: str) -> set[str]:
         return self.__redis_client.smembers(self.user_sockets_key.format(user_id))
+
+    async def get_many_users(self, user_ids: list[PydanticObjectId]) -> list[User]:
+        users = await User.find({"_id": {"$in": user_ids}}).to_list()
+        return users

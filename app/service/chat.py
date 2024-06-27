@@ -1,9 +1,9 @@
 from beanie import PydanticObjectId
 
 from exceptions import MessageSentError
-from schemas import UserMessageRequest, GetConversationMessagesWithPage, UserRead
+from model.schemas import UserMessageRequest, GetConversationMessagesWithPage, UserRead
 from service import ConversationService
-from model.mongo import Message, UserMessage, SystemMessage
+from model.mongo import Message, UserMessage
 
 
 class MessageService:

@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from schemas import UserLogin
+from model.schemas import UserLogin
 from service.user import UserService
 
 

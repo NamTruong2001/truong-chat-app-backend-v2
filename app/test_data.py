@@ -1,8 +1,7 @@
 import asyncio
-from datetime import datetime
 
 from motor.motor_asyncio import AsyncIOMotorClient
-from beanie import init_beanie, WriteRules, PydanticObjectId
+from beanie import init_beanie, PydanticObjectId
 from model.mongo import (
     Message,
     User,
@@ -13,8 +12,7 @@ from model.mongo import (
 )
 from bson import ObjectId
 from db.mongo import initialize_mongo_with_beanie
-from schemas.enums import SystemMessageType, UserMessageType
-from service import ConversationService
+from enums import SystemMessageType, UserMessageType
 
 settings = {"db_name": "chat_app_testing", "uri": "mongodb://localhost:27017"}
 
@@ -160,6 +158,11 @@ if __name__ == "__main__":
 
     async def generate_system_messages():
         # generate some messages of type SystemMessage
+        client = AsyncIOMotorClient(settings["uri"])
+        await init_beanie(
+            database=client.chat_testing,
+            document_models=[Message, User, Conversation, UserMessage, SystemMessage],
+        )
         s = SystemMessage(
             conversation_id=PydanticObjectId("666becdad41278ef87be0837"),
             system_type=SystemMessageType.SYSTEM_TEXT,

@@ -6,7 +6,7 @@ from model.mongo import User
 import jwt
 from socketio.exceptions import ConnectionRefusedError
 
-from schemas.user import UserRead
+from model.schemas.user import UserRead
 from util.setting import get_settings
 
 settings = get_settings()

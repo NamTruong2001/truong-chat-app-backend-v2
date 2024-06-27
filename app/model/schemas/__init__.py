@@ -4,3 +4,8 @@ from .message import (
     MessageInResponse,
     GetConversationMessagesWithPage,
 )
+from .conversation import (
+    CreateConversationRequest,
+    AddParticipantsRequest,
+    RemoveParticipantsRequest,
+)

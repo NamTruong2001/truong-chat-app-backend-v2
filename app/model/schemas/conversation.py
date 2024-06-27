@@ -4,8 +4,8 @@ from typing import List, Union
 from pydantic import BaseModel, Field
 
 from model.mongo import Conversation, Message, UserMessage, SystemMessage
-from schemas import UserRead
-from schemas.enums import ConversationEnum
+from model.schemas import UserRead
+from enums import ConversationEnum
 
 
 class ParticipantUser(BaseModel):

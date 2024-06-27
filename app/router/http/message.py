@@ -1,8 +1,6 @@
-from typing import Annotated
-
 from fastapi import APIRouter, Depends
-from schemas import GetConversationMessagesWithPage
-from schemas import UserRead
+from model.schemas import GetConversationMessagesWithPage
+from model.schemas import UserRead
 from service import MessageService
 from util import validate_token
 

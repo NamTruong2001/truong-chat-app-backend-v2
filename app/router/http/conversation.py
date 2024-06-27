@@ -4,12 +4,12 @@ from fastapi import APIRouter, Query, Depends
 
 from service import ConversationService
 from util.jwt import validate_token
-from schemas.conversation import (
+from model.schemas import (
     RemoveParticipantsRequest,
     AddParticipantsRequest,
     CreateConversationRequest,
 )
-from schemas.user import UserRead
+from model.schemas.user import UserRead
 
 
 class ConversationRouter(APIRouter):
@@ -25,7 +25,7 @@ class ConversationRouter(APIRouter):
         super().add_api_route(
             "/add-participant", self.add_participant, methods=["POST"]
         )
-        super().add_api_route("/leave", self.leave_conversation, methods=["POST"])
+        # super().add_api_route("/leave", self.leave_conversation, methods=["POST"])
         super().add_api_route("/test", self.test, methods=["GET"])
         super().add_api_route(
             "/find-private-conversation",
@@ -86,15 +86,15 @@ class ConversationRouter(APIRouter):
         )
         return conversation
 
-    async def leave_conversation(
-        self,
-        conversation_id: Annotated[str, Query],
-        user: UserRead = Depends(validate_token),
-    ):
-        conversation = await self.conversation_service.leave_conversation(
-            conversation_id=conversation_id, user=user
-        )
-        return conversation
+    # async def leave_conversation(
+    #     self,
+    #     conversation_id: Annotated[str, Query],
+    #     user: UserRead = Depends(validate_token),
+    # ):
+    #     conversation = await self.conversation_service.leave_conversation(
+    #         conversation_id=conversation_id, user=user
+    #     )
+    #     return conversation
 
     async def find_private_conversation_with_user(
         self,
