@@ -38,13 +38,14 @@ sio = socketio.AsyncServer(
     # engineio_logger=True,
 )
 app = socketio.ASGIApp(sio, fapp)
-redis_client = connect_to_redis_with_retry()
+redis_client = None
 
 
 @fapp.on_event("startup")
 async def startup_event():
     # db
     await initialize_mongo_with_beanie()
+    redis_client = connect_to_redis_with_retry()
 
     # repository
     user_repository = UserRepository(redis_client=redis_client)
@@ -87,8 +88,9 @@ async def startup_event():
 
 @fapp.on_event("shutdown")
 def shutdown_event():
-    redis_client.flushdb()
-    redis_client.close()
+    if redis_client:
+        redis_client.flushdb()
+        redis_client.close()
 
 
 if __name__ == "__main__":

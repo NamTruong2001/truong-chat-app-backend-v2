@@ -79,7 +79,7 @@ class ChatSocket(AsyncNamespace):
     async def on_readMessage(self, sid, data):
         user_session = await self.get_session(sid)
         user_id = user_session["user_id"]
-        pass
+        
 
     async def on_disconnect(self, sid):
         user_session = await self.get_session(sid)

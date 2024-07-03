@@ -49,3 +49,6 @@ class MessageService:
         print(messages)
 
         return messages
+    
+    async def update_message_read_status(user_id: str, message_id: str):
+        pass
