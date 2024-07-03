@@ -75,6 +75,11 @@ class ChatSocket(AsyncNamespace):
         await self.emit(
             "presence", data=online_status_private_chat_participants, to=sid
         )
+        
+    async def on_readMessage(self, sid, data):
+        user_session = await self.get_session(sid)
+        user_id = user_session["user_id"]
+        pass
 
     async def on_disconnect(self, sid):
         user_session = await self.get_session(sid)
