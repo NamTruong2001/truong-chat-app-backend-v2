@@ -1,8 +1,6 @@
 from redis import Redis
 
 from util import get_settings
-import redis
-import time
 from redis.exceptions import ConnectionError
 
 

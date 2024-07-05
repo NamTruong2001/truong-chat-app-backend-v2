@@ -5,7 +5,7 @@ from pydantic import ValidationError
 from socketio import AsyncNamespace
 
 from exceptions import MessageSentError
-from model.schemas import UserMessageRequest
+from model.schemas import UserMessageRequest, UserReadMessage
 from enums import ConversationEnum, SocketAction
 from service.user import UserService
 from util import validate_socket_connection
@@ -43,43 +43,62 @@ class ChatSocket(AsyncNamespace):
         emit_presence_tasks = []
         for conversation in conversations:
             self.enter_room(sid=sid, room=f"{str(conversation.id)}")
-            # only notify online status in private conversation
-            if conversation.type == ConversationEnum.PRIVATE:
-                str_conversation_id = str(conversation.id)
-                if len(updated_user_connections) == 1:
-                    emit_presence_tasks.append(
-                        self.emit(
-                            event="presence",
-                            room=str_conversation_id,
-                            skip_sid=sid,
-                            data={
-                                "conversation_id": str_conversation_id,
-                                "user": str(user.id),
-                                "is_online": True,
-                            },
-                        )
+            # # only notify online status in private conversation
+            # if conversation.type == ConversationEnum.PRIVATE:
+            str_conversation_id = str(conversation.id)
+            if len(updated_user_connections) == 1:
+                emit_presence_tasks.append(
+                    self.emit(
+                        event="presence",
+                        room=str_conversation_id,
+                        skip_sid=sid,
+                        data={
+                            "conversation_id": str_conversation_id,
+                            "user": str(user.id),
+                            "is_online": True,
+                        },
                     )
-                # get the online status of participants in each user private conversations
-                for participant in conversation.participants:
-                    online_status = {
-                        "user_id": str(participant.user_id),
-                        "conversation_id": str(conversation.id),
-                    }
-                    if str(participant.user_id) != str(user.id):
-                        if self.user_service.is_user_online(str(participant.user_id)):
-                            online_status["online"] = True
-                        else:
-                            online_status["online"] = False
-                        online_status_private_chat_participants.append(online_status)
+                )
+            # get the online status of participants in each user private conversations
+            for participant in conversation.participants:
+                online_status = {
+                    "user_id": str(participant.user_id),
+                    "conversation_id": str(conversation.id),
+                }
+                if str(participant.user_id) != str(user.id):
+                    if self.user_service.is_user_online(str(participant.user_id)):
+                        online_status["online"] = True
+                    else:
+                        online_status["online"] = False
+                    online_status_private_chat_participants.append(online_status)
         await asyncio.gather(*emit_presence_tasks)
         await self.emit(
             "presence", data=online_status_private_chat_participants, to=sid
         )
-        
-    async def on_readMessage(self, sid, data):
-        user_session = await self.get_session(sid)
-        user_id = user_session["user_id"]
-        
+
+    # async def on_readMessage(self, sid, data):
+    #     try:
+    #         user_session = await self.get_session(sid)
+    #         user_id = user_session["user_id"]
+    #         user_read_event = UserReadMessage(**data, user_id=user_id)
+    #         await self.chat_service.update_message_read_status(user_read_event)
+    #     except ValidationError as ve:
+    #         await self.emit(
+    #             event="readMessage",
+    #             to=sid,
+    #             data={
+    #                 "error": {
+    #                     "message": "Read message validation error",
+    #                     "details": ve.errors(),
+    #                 }
+    #             },
+    #         )
+    #     except MessageSentError as mse:
+    #         await self.emit(
+    #             event="readMessage",
+    #             to=sid,
+    #             data={"error": {"message": mse.message, "details": {}}},
+    #         )
 
     async def on_disconnect(self, sid):
         user_session = await self.get_session(sid)
@@ -90,11 +109,6 @@ class ChatSocket(AsyncNamespace):
         )
         emit_presence_tasks = []
         if len(updated_user_connections) == 0:
-            # conversations = await self.conversation_service.get_user_conversations(
-            #     user_id=str(user_id),
-            #     conversation_type=ConversationEnum.PRIVATE,
-            #     is_all=True,
-            # )
             for room in self.rooms(sid=sid):
                 emit_presence_tasks.append(
                     self.emit(

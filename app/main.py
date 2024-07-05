@@ -8,26 +8,20 @@ from repository.user import UserRepository
 from router.http.auth import AuthRouter
 from router.http.conversation import ConversationRouter
 from router.http.message import MessageRouter
+from router.http.read_status import ReadStatusRouter
 from router.http.register import SignUpRouter
 from router.http.test import TestRouter
 from router.socket import ChatSocket
-from service import ConversationService, MessageService
+from service import ConversationService, MessageService, ReadStatusService
 from db.mongo import initialize_mongo_with_beanie
 from service.user import UserService
 from db.redis import connect_to_redis_with_retry
 from parser import args
 from util import get_settings
+from contextlib import asynccontextmanager
 
-fapp = FastAPI()
+
 settings = get_settings()
-fapp.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 mgr = socketio.AsyncRedisManager(
     f"redis://{settings.redis_user}:{settings.redis_password}@{settings.redis_host}:{settings.redis_port}"
 )
@@ -37,14 +31,11 @@ sio = socketio.AsyncServer(
     client_manager=mgr,
     # engineio_logger=True,
 )
-app = socketio.ASGIApp(sio, fapp)
-redis_client = None
 
 
-@fapp.on_event("startup")
-async def startup_event():
-    # db
-    await initialize_mongo_with_beanie()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    mongo_client = await initialize_mongo_with_beanie()
     redis_client = connect_to_redis_with_retry()
 
     # repository
@@ -59,6 +50,11 @@ async def startup_event():
     )
     user_service = UserService(user_repository=user_repository)
     message_service = MessageService(conversation_service=conversation_service)
+    read_status_service = ReadStatusService(
+        conversation_repository=conversation_repository,
+        sio=sio,
+        conversation_service=conversation_service,
+    )
 
     # router
     auth_router = AuthRouter(user_service=user_service, prefix="/api/auth")
@@ -69,14 +65,16 @@ async def startup_event():
     message_router = MessageRouter(
         message_service=message_service, prefix="/api/message"
     )
-    fapp.include_router(conversation_router)
-    fapp.include_router(auth_router)
-    fapp.include_router(register_router)
-    fapp.include_router(message_router)
+    read_status_router = ReadStatusRouter(
+        read_status_service=read_status_service, prefix="/api/read-status"
+    )
+    app.include_router(conversation_router)
+    app.include_router(auth_router)
+    app.include_router(register_router)
+    app.include_router(message_router)
+    app.include_router(read_status_router)
     # test_router = TestRouter(prefix="/hehe")
     # fapp.include_router(test_router)
-
-    # socket
     chat_socket = ChatSocket(
         name_space="/chat",
         chat_service=message_service,
@@ -84,13 +82,75 @@ async def startup_event():
         user_service=user_service,
     )
     sio.register_namespace(chat_socket)
+    yield
+
+    mongo_client.close()
+    redis_client.flushdb()
+    redis_client.close()
+    redis_client.client().close()
 
 
-@fapp.on_event("shutdown")
-def shutdown_event():
-    if redis_client:
-        redis_client.flushdb()
-        redis_client.close()
+fapp = FastAPI(lifespan=lifespan)
+fapp.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+app = socketio.ASGIApp(sio, fapp)
+
+
+# @fapp.on_event("startup")
+# async def startup_event():
+#     # db
+#     await initialize_mongo_with_beanie()
+#     redis_client = connect_to_redis_with_retry()
+#
+#     # repository
+#     user_repository = UserRepository(redis_client=redis_client)
+#     conversation_repository = ConversationRepository(redis_client=redis_client)
+#
+#     # service
+#     conversation_service = ConversationService(
+#         conversation_repository=conversation_repository,
+#         sio=sio,
+#         user_repository=user_repository,
+#     )
+#     user_service = UserService(user_repository=user_repository)
+#     message_service = MessageService(conversation_service=conversation_service)
+#
+#     # router
+#     auth_router = AuthRouter(user_service=user_service, prefix="/api/auth")
+#     register_router = SignUpRouter(user_service=user_service, prefix="/api/register")
+#     conversation_router = ConversationRouter(
+#         conversation_service=conversation_service, prefix="/api/conversation"
+#     )
+#     message_router = MessageRouter(
+#         message_service=message_service, prefix="/api/message"
+#     )
+#     fapp.include_router(conversation_router)
+#     fapp.include_router(auth_router)
+#     fapp.include_router(register_router)
+#     fapp.include_router(message_router)
+#     # test_router = TestRouter(prefix="/hehe")
+#     # fapp.include_router(test_router)
+#
+#     # socket
+#     chat_socket = ChatSocket(
+#         name_space="/chat",
+#         chat_service=message_service,
+#         conversation_service=conversation_service,
+#         user_service=user_service,
+#     )
+#     sio.register_namespace(chat_socket)
+#
+#
+# @fapp.on_event("shutdown")
+# def shutdown_event():
+#     if redis_client:
+#         redis_client.flushdb()
+#         redis_client.close()
 
 
 if __name__ == "__main__":

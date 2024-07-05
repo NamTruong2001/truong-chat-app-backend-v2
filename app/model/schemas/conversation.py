@@ -4,6 +4,7 @@ from typing import List, Union
 from pydantic import BaseModel, Field
 
 from model.mongo import Conversation, Message, UserMessage, SystemMessage
+from model.mongo.read_status import ReadStatus
 from model.schemas import UserRead
 from enums import ConversationEnum
 
@@ -19,6 +20,7 @@ class ConversationWithLatestMessageAndUser(Conversation):
         default_factory=list,
         discriminator="type",
     )
+    read_statuses: list[ReadStatus] = Field(default_factory=list)
 
     class Config:
         from_attributes = True
@@ -47,3 +49,12 @@ class CreateConversationRequest(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class CacheConversation(BaseModel):
+    id: str
+    title: str
+    type: str
+    creator_id: str
+    created_at: str
+    participants: List[str]

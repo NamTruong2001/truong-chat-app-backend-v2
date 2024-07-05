@@ -3,9 +3,11 @@ from .message import (
     UserMessageRequest,
     MessageInResponse,
     GetConversationMessagesWithPage,
+    UserReadMessage,
 )
 from .conversation import (
     CreateConversationRequest,
     AddParticipantsRequest,
     RemoveParticipantsRequest,
+    CacheConversation,
 )

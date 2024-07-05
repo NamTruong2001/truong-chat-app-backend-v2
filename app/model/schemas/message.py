@@ -73,25 +73,7 @@ class UserSysAction(str, Enum):
     test = "test"
 
 
-class UserLeaveConversation(SystemMessageContent):
-    user_id: UserTemporaryInfo
-    action: UserSysAction = UserSysAction.leave_conversation
-
-
-class TestAction(SystemMessageContent):
-    action: UserSysAction = UserSysAction.test
-
-
-class UserJoinConversation(SystemMessageContent):
-    user: UserTemporaryInfo
-    action: UserSysAction = UserSysAction.join_conversation
-
-
-class UserAddedToConversation(SystemMessageContent):
-    users: list[UserTemporaryInfo]
-    action: UserSysAction = UserSysAction.add_participant
-
-
-class UserRemovedFromConversation(SystemMessageContent):
-    users: list[UserTemporaryInfo]
-    action: UserSysAction = UserSysAction.remove_participant
+class UserReadMessage(BaseModel):
+    user_id: PydanticObjectId
+    conversation_id: PydanticObjectId
+    message_id: PydanticObjectId
