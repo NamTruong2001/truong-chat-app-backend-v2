@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     allowed_video_type: list[str] = ["video/mp4"]
 
     model_config = SettingsConfigDict(
-        env_file=f".././.{args.environ if len(sys.argv) > 1 else 'dev'}"
+        env_file=f".././.{args.environ if len(sys.argv) > 1 else 'local'}"
     )
 
 
