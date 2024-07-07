@@ -10,6 +10,8 @@ from repository import ConversationRepository
 from service import ConversationService
 from socketio import AsyncServer
 
+from util.global_variable import chat_namespace
+
 
 class ReadStatusService:
     def __init__(
@@ -49,18 +51,18 @@ class ReadStatusService:
             ReadStatus.conversation_id == PydanticObjectId(conversation_id),
             ReadStatus.user_id == current_user.id,
         ).first_or_none()
-        print(current_user, "current_user")
-        print(read_status, "read_status")
 
         latest_message = (
-            await Message.find({"conversation_id": PydanticObjectId(conversation_id)})
+            await Message.find(
+                {"conversation_id": PydanticObjectId(conversation_id)},
+                with_children=True,
+            )
             .sort(-Message.created_at)
             .skip(0)
             .limit(1)
             .first_or_none()
         )
-        print(latest_message, "latest_message")
-        now_dt = datetime.now()
+        now_dt = datetime.utcnow()
         if read_status is None:
             new_read_status = ReadStatus(
                 latest_read_message_id=latest_message.id,
@@ -70,6 +72,8 @@ class ReadStatusService:
             )
             read_status = await new_read_status.insert()
         else:
+            if read_status.latest_read_message_id == latest_message.id:
+                return read_status
             read_status.read_at = now_dt
             read_status.latest_read_message_id = latest_message.id
             read_status = await read_status.save()
@@ -77,8 +81,9 @@ class ReadStatusService:
         if read_status:
             read_event = self._map_to_dto(read_status)
             await self._sio.emit(
-                "readMessage",
-                jsonable_encoder(read_event.model_dump()),
+                namespace=chat_namespace,
+                event="readmessage",
+                data=jsonable_encoder(read_event.model_dump()),
                 room=conversation_id,
             )
 

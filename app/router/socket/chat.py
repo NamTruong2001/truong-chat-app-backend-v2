@@ -76,29 +76,30 @@ class ChatSocket(AsyncNamespace):
             "presence", data=online_status_private_chat_participants, to=sid
         )
 
-    # async def on_readMessage(self, sid, data):
-    #     try:
-    #         user_session = await self.get_session(sid)
-    #         user_id = user_session["user_id"]
-    #         user_read_event = UserReadMessage(**data, user_id=user_id)
-    #         await self.chat_service.update_message_read_status(user_read_event)
-    #     except ValidationError as ve:
-    #         await self.emit(
-    #             event="readMessage",
-    #             to=sid,
-    #             data={
-    #                 "error": {
-    #                     "message": "Read message validation error",
-    #                     "details": ve.errors(),
-    #                 }
-    #             },
-    #         )
-    #     except MessageSentError as mse:
-    #         await self.emit(
-    #             event="readMessage",
-    #             to=sid,
-    #             data={"error": {"message": mse.message, "details": {}}},
-    #         )
+    async def on_readmessage(self, sid, data):
+        print(data)
+        # try:
+        #     user_session = await self.get_session(sid)
+        #     user_id = user_session["user_id"]
+        #     user_read_event = UserReadMessage(**data, user_id=user_id)
+        #     await self.chat_service.update_message_read_status(user_read_event)
+        # except ValidationError as ve:
+        #     await self.emit(
+        #         event="readMessage",
+        #         to=sid,
+        #         data={
+        #             "error": {
+        #                 "message": "Read message validation error",
+        #                 "details": ve.errors(),
+        #             }
+        #         },
+        #     )
+        # except MessageSentError as mse:
+        #     await self.emit(
+        #         event="readMessage",
+        #         to=sid,
+        #         data={"error": {"message": mse.message, "details": {}}},
+        #     )
 
     async def on_disconnect(self, sid):
         user_session = await self.get_session(sid)
