@@ -172,6 +172,11 @@ class ConversationService:
             conversation = await self.get_conversation_by_user_and_conversation_id(
                 conversation_id=conversation_id, user_id=str(current_user.id)
             )
+            if conversation.type == ConversationEnum.PRIVATE:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Cannot add participants to private conversation",
+                )
 
             """add new user ids to conversation of mongodb and redis"""
             added_participants = conversation.add_participant(new_user_ids)
@@ -179,6 +184,9 @@ class ConversationService:
                 str(added_participant.user_id)
                 for added_participant in added_participants
             ]
+            cache_conversation = self.conversation_repository.get_cache_conversation(
+                conversation_id
+            )
             newly_added_users = [
                 {"id": str(user.id), "username": user.username}
                 for user in new_users
@@ -188,9 +196,6 @@ class ConversationService:
             if not added_participants:
                 raise ParticipantAlreadyExists("Participants already exist")
             await conversation.save()
-            cache_conversation = self.conversation_repository.get_cache_conversation(
-                conversation_id
-            )
             if cache_conversation:
                 cache_conversation["participants"].extend(new_user_ids)
                 self.conversation_repository.cache_conversation(
@@ -250,6 +255,11 @@ class ConversationService:
             conversation = await self.get_conversation_by_user_and_conversation_id(
                 conversation_id=conversation_id, user_id=str(current_user.id)
             )
+            if conversation.type == ConversationEnum.PRIVATE:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Cannot remove participants from private conversation",
+                )
 
             removed_participants, remaining_participants = (
                 conversation.remove_participant(user_ids_for_remove)
@@ -313,7 +323,7 @@ class ConversationService:
             await system_message.insert()
 
             await self.sio.emit(
-                namespace="/chat",
+                namespace=chat_namespace,
                 event="message",
                 data=jsonable_encoder(system_message.model_dump()),
                 room=conversation_id,

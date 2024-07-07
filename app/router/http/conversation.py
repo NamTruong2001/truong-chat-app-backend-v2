@@ -86,16 +86,6 @@ class ConversationRouter(APIRouter):
         )
         return conversation
 
-    # async def leave_conversation(
-    #     self,
-    #     conversation_id: Annotated[str, Query],
-    #     user: UserRead = Depends(validate_token),
-    # ):
-    #     conversation = await self.conversation_service.leave_conversation(
-    #         conversation_id=conversation_id, user=user
-    #     )
-    #     return conversation
-
     async def find_private_conversation_with_user(
         self,
         user_id: Annotated[str, Query],
