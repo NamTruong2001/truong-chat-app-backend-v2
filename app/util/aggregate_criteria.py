@@ -53,3 +53,14 @@ conversation_with_latest_message_map = [
         }
     },
 ]
+
+conversation_with_read_status = [
+    {
+        "$lookup": {
+            "from": "ReadStatus",
+            "localField": "_id",
+            "foreignField": "conversation_id",
+            "as": "read_statuses",
+        }
+    }
+]

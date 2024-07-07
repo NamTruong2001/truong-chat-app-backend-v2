@@ -1,10 +1,14 @@
 from redis.asyncio import Redis
 
+from model.schemas import CacheConversation
+
 
 class ConversationRepository:
     def __init__(self, redis_client: Redis):
         self.__rc = redis_client
         self.conversation_participants_key = "conversation:{}:participants"
+        self.conversation_type_key = "conversation:{}:type"
+        self.conversation_key = "conversation:{}"
 
     def is_conversation_cached(self, conversation_id: str) -> bool:
         result = self.__rc.exists(
@@ -40,3 +44,14 @@ class ConversationRepository:
         return self.__rc.srem(
             self.conversation_participants_key.format(conversation_id), *user_id
         )
+
+    def cache_conversation(self, conversation: CacheConversation):
+        self.__rc.json().set(
+            name=self.conversation_key.format(conversation.id),
+            path=".",
+            obj=conversation.model_dump(),
+        )
+        self.__rc.expire(self.conversation_key.format(conversation.id), 2 * 60 * 60)
+
+    def get_cache_conversation(self, conversation_id: str) -> dict:
+        return self.__rc.json().get(name=self.conversation_key.format(conversation_id))

@@ -4,7 +4,6 @@ from typing import List, Union, Optional
 
 from pydantic import Field, BaseModel
 from .user import User
-from exceptions import ParticipantAlreadyExists
 
 
 class Participant(BaseModel):
@@ -47,7 +46,6 @@ class Conversation(Document):
         # for user_id in user_ids:
         #     if user_id in participants_user_ids:
         #         raise ParticipantAlreadyExists("Participant already exists")
-        print(new_participants)
         self.participants.extend(new_participants)
         return new_participants
 

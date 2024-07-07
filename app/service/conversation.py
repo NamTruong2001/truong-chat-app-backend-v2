@@ -16,13 +16,18 @@ from exceptions import (
     ParticipantNotFound,
 )
 from repository import ConversationRepository, UserRepository
-from model.schemas.conversation import ConversationWithLatestMessageAndUser
+from model.schemas.conversation import (
+    ConversationWithLatestMessageAndUser,
+    CacheConversation,
+)
 from enums import ConversationEnum, SystemMessageType
 from model.schemas.user import UserRead
 from util.aggregate_criteria import (
     conversation_participant_user_map,
     conversation_with_latest_message_map,
+    conversation_with_read_status,
 )
+from util.map import map_conversation_to_cache_conversation
 
 
 class ConversationService:
@@ -52,7 +57,9 @@ class ConversationService:
         return conversation
 
     def _map_message_with_latest_message(
-        self, messages: list[Message], conversations: list[Conversation]
+        self,
+        messages: list[Message],
+        conversations: list[ConversationWithLatestMessageAndUser],
     ):
         id_conversation = {
             conversation.id: ConversationWithLatestMessageAndUser(
@@ -64,6 +71,7 @@ class ConversationService:
                 participants=[
                     *conversation.participants,
                 ],
+                read_statuses=conversation.read_statuses,
             )
             for conversation in conversations
         }
@@ -91,6 +99,7 @@ class ConversationService:
                 {"$match": {"participants.user_id": PydanticObjectId(user.id)}},
                 *conversation_participant_user_map,
                 *conversation_with_latest_message_map,
+                *conversation_with_read_status,
                 {"$sort": {"latest_message.created_at": -1}},
             ],
             projection_model=ConversationWithLatestMessageAndUser,
@@ -163,6 +172,11 @@ class ConversationService:
             conversation = await self.get_conversation_by_user_and_conversation_id(
                 conversation_id=conversation_id, user_id=str(current_user.id)
             )
+            if conversation.type == ConversationEnum.PRIVATE:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Cannot add participants to private conversation",
+                )
 
             """add new user ids to conversation of mongodb and redis"""
             added_participants = conversation.add_participant(new_user_ids)
@@ -170,6 +184,9 @@ class ConversationService:
                 str(added_participant.user_id)
                 for added_participant in added_participants
             ]
+            cache_conversation = self.conversation_repository.get_cache_conversation(
+                conversation_id
+            )
             newly_added_users = [
                 {"id": str(user.id), "username": user.username}
                 for user in new_users
@@ -179,9 +196,10 @@ class ConversationService:
             if not added_participants:
                 raise ParticipantAlreadyExists("Participants already exist")
             await conversation.save()
-            if self.conversation_repository.is_conversation_cached(conversation_id):
-                self.conversation_repository.add_user_id_to_conversation(
-                    conversation_id=conversation_id, user_id=added_participant_user_ids
+            if cache_conversation:
+                cache_conversation["participants"].extend(new_user_ids)
+                self.conversation_repository.cache_conversation(
+                    CacheConversation(**cache_conversation)
                 )
             """create system message"""
             system_message = SystemMessage(
@@ -237,6 +255,11 @@ class ConversationService:
             conversation = await self.get_conversation_by_user_and_conversation_id(
                 conversation_id=conversation_id, user_id=str(current_user.id)
             )
+            if conversation.type == ConversationEnum.PRIVATE:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Cannot remove participants from private conversation",
+                )
 
             removed_participants, remaining_participants = (
                 conversation.remove_participant(user_ids_for_remove)
@@ -256,9 +279,18 @@ class ConversationService:
             if not removed_participants:
                 raise ParticipantNotFound("Participants not found")
             await conversation.save()
-            if self.conversation_repository.is_conversation_cached(conversation_id):
-                self.conversation_repository.remove_user_id_from_conversation(
-                    conversation_id=conversation_id, user_id=remove_user_ids
+
+            cache_conversation = self.conversation_repository.get_cache_conversation(
+                conversation_id
+            )
+            if cache_conversation:
+                cache_conversation["participants"] = [
+                    participant_id
+                    for participant_id in cache_conversation["participants"]
+                    if participant_id not in remove_user_ids
+                ]
+                self.conversation_repository.cache_conversation(
+                    CacheConversation(**cache_conversation)
                 )
 
             """create system message"""
@@ -291,7 +323,7 @@ class ConversationService:
             await system_message.insert()
 
             await self.sio.emit(
-                namespace="/chat",
+                namespace=chat_namespace,
                 event="message",
                 data=jsonable_encoder(system_message.model_dump()),
                 room=conversation_id,
@@ -334,52 +366,41 @@ class ConversationService:
         conversations = await Conversation.find(search_criteria).to_list()
         return conversations
 
-    async def leave_conversation(self, user: UserRead, conversation_id: str):
-        try:
-            is_in = self.is_user_in_conversation(
-                user_id=str(user.id), conversation_id=conversation_id
-            )
-            if not is_in:
-                raise ConversationNotFound("Conversation not found")
-            conversation = await self.get_conversation_by_user_and_conversation_id(
-                conversation_id=conversation_id, user_id=str(user.id)
-            )
-            removed_participants = conversation.remove_participant([str(user.id)])
-            if not removed_participants:
-                raise ParticipantNotFound("Participants not found")
-
-            await conversation.save()
-            return conversation
-        except ParticipantNotFound as pnf:
-            raise HTTPException(status_code=400, detail=str(pnf))
-        except ConversationNotFound as cnf:
-            raise HTTPException(status_code=400, detail=str(cnf))
-        except UserNotFound as unf:
-            raise HTTPException(status_code=400, detail=str(unf))
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
-
-    async def is_user_in_conversation(self, user_id: str, conversation_id: str):
-        if self.conversation_repository.is_conversation_cached(conversation_id):
-            is_in = self.conversation_repository.is_user_in_cached_conversation(
-                user_id=user_id, conversation_id=conversation_id
-            )
+    async def is_user_in_conversation_with_cache(
+        self, user_id: str, conversation_id: str
+    ):
+        cache_conversation = self.conversation_repository.get_cache_conversation(
+            conversation_id=conversation_id
+        )
+        if cache_conversation:
+            is_in = user_id in cache_conversation["participants"]
             return is_in
         else:
             try:
                 conversation = await self.get_conversation_by_user_and_conversation_id(
                     user_id=user_id, conversation_id=conversation_id
                 )
-                self.conversation_repository.cache_conversation_participants(
-                    conversation_id=str(conversation.id),
-                    participant_ids=[
-                        str(participant.user_id)
-                        for participant in conversation.participants
-                    ],
+                conversation_for_cache = map_conversation_to_cache_conversation(
+                    conversation
                 )
+                self.conversation_repository.cache_conversation(conversation_for_cache)
                 return True
             except ConversationNotFound:
                 return False
+
+    async def get_cache_conversation(self, conversation_id: str):
+        cache_conversation = self.conversation_repository.get_cache_conversation(
+            conversation_id=conversation_id
+        )
+        if cache_conversation:
+            return cache_conversation
+        else:
+            conversation = await self.get_conversation_info(conversation_id)
+            conversation_for_cache = map_conversation_to_cache_conversation(
+                conversation
+            )
+            self.conversation_repository.cache_conversation(conversation_for_cache)
+            return map_conversation_to_cache_conversation(conversation)
 
     async def get_private_conversation_by_another_user_id(
         self, user_id: str, current_user: UserRead
