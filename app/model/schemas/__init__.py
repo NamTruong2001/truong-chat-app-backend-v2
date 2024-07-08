@@ -10,4 +10,5 @@ from .conversation import (
     AddParticipantsRequest,
     RemoveParticipantsRequest,
     CacheConversation,
+    ConversationWithParticipantUsersInfo,
 )

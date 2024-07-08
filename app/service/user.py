@@ -1,4 +1,6 @@
 from fastapi import HTTPException
+from fastapi.encoders import jsonable_encoder
+from pydantic import ValidationError
 
 from repository.user import UserRepository
 from enums import SocketAction
@@ -27,19 +29,23 @@ class UserService:
         )
 
     async def register(self, user_register: UserRegister):
-        user = await User.find_one({"email": user_register.email})
-        if user is not None:
-            raise HTTPException(status_code=400, detail="Email already exists")
-        new_user = User(
-            email=user_register.email,
-            password=user_register.password,
-            username=user_register.username,
-            is_active=True,
-        )
-        await new_user.insert()
-        return UserRead(
-            id=new_user.id, email=new_user.email, username=new_user.username
-        )
+        try:
+            if User.find_one(User.email == user_register.email):
+                raise HTTPException(status_code=400, detail="Email already exists")
+            if User.find_one(User.username == user_register.username):
+                raise HTTPException(status_code=400, detail="Username already exists")
+            new_user = User(
+                email=user_register.email,
+                password=user_register.password,
+                username=user_register.username,
+                is_active=True,
+            )
+            await new_user.insert()
+            return UserRead(
+                id=new_user.id, email=new_user.email, username=new_user.username
+            )
+        except ValidationError as ve:
+            raise HTTPException(status_code=400, detail=jsonable_encoder(ve.errors()))
 
     def is_user_online(self, user_id: str) -> bool:
         return self.user_repository.is_user_online(user_id)

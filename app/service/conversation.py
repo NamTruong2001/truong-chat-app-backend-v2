@@ -5,7 +5,10 @@ from beanie.odm.operators.find.comparison import In
 from bson import ObjectId
 from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
+from pydantic import ValidationError
 from socketio import AsyncServer
+
+from model.schemas import ConversationWithParticipantUsersInfo
 from util.global_variable import chat_namespace
 
 from model.mongo import Conversation, Participant, User, Message, SystemMessage
@@ -129,17 +132,35 @@ class ConversationService:
         creator = await User.find_one(User.id == PydanticObjectId(creator_id))
         if creator is None:
             raise UserNotFound(creator_id)
+
+        if (
+            conversation_type == ConversationEnum.PRIVATE
+            and await self.get_private_conversation_by_another_user_id(
+                user_id=participant_ids[0],
+                current_user=UserRead(
+                    id=creator.id, username=creator.username, email=creator.email
+                ),
+            )
+        ):
+            raise HTTPException(
+                status_code=400, detail="Private conversation already exists"
+            )
+
         participants = [
             Participant(user_id=PydanticObjectId(participant_id))
             for participant_id in participant_ids
         ]
         participants.append(Participant(user_id=PydanticObjectId(creator_id)))
-        conversation = Conversation(
-            title=title,
-            creator=creator,
-            type=conversation_type,
-            participants=participants,
-        )
+
+        try:
+            conversation = Conversation(
+                title=title if conversation_type == ConversationEnum.GROUP else "",
+                creator=creator,
+                type=conversation_type,
+                participants=participants,
+            )
+        except ValidationError as ve:
+            raise HTTPException(status_code=400, detail=jsonable_encoder(ve.errors()))
         await conversation.insert()
         return conversation
 
@@ -428,6 +449,6 @@ class ConversationService:
                 },
                 *conversation_participant_user_map,
             ],
-            projection_model=ConversationWithLatestMessageAndUser,
+            projection_model=ConversationWithParticipantUsersInfo,
         ).to_list()
         return conversation

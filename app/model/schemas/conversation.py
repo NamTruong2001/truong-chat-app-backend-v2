@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, conlist
 
 from model.mongo import Conversation, Message, UserMessage, SystemMessage
 from model.mongo.read_status import ReadStatus
@@ -26,6 +26,10 @@ class ConversationWithLatestMessageAndUser(Conversation):
         from_attributes = True
 
 
+class ConversationWithParticipantUsersInfo(Conversation):
+    participants: List[ParticipantUser]
+
+
 class RemoveParticipantsRequest(BaseModel):
     remove_participant_ids: List[str]
     conversation_id: str
@@ -45,7 +49,7 @@ class AddParticipantsRequest(BaseModel):
 class CreateConversationRequest(BaseModel):
     title: str
     conversation_type: ConversationEnum
-    participant_ids: List[str]
+    participant_ids: conlist(str, min_length=1)
 
     class Config:
         from_attributes = True

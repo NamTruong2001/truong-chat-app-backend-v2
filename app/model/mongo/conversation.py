@@ -2,7 +2,7 @@ from datetime import datetime
 from beanie import Document, Link, PydanticObjectId
 from typing import List, Union, Optional
 
-from pydantic import Field, BaseModel
+from pydantic import Field, BaseModel, field_validator, model_validator
 from .user import User
 
 
