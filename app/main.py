@@ -85,7 +85,6 @@ async def lifespan(app: FastAPI):
     yield
 
     mongo_client.close()
-    redis_client.flushdb()
     redis_client.close()
     redis_client.client().close()
 
