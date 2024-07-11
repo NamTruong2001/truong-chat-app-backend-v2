@@ -29,6 +29,10 @@ class UserRepository:
         )
         return result
 
+    def is_multiple_user_online(self, user_ids: list[str]):
+        result = self.__redis_client.smismember(self.online_users_key, *user_ids)
+        return result
+
     def remove_user_socket(self, user_id: str, socket_id: str) -> int:
         result = self.__redis_client.srem(
             self.user_sockets_key.format(user_id), socket_id

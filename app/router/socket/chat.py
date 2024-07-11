@@ -27,7 +27,6 @@ class ChatSocket(AsyncNamespace):
 
     async def on_connect(self, sid, auth, environment):
         print(sid, "connected")
-        # print("Connected")
         user = validate_socket_connection(auth)
         await self.save_session(sid, {"user_id": str(user.id)})
         updated_user_connections = self.user_service.manage_user_socket_connection(
@@ -39,11 +38,10 @@ class ChatSocket(AsyncNamespace):
             conversation_type=ConversationEnum.ALL,
         )
 
-        online_status_private_chat_participants = []
+        online_status_conversations_participants = []
         emit_presence_tasks = []
         for conversation in conversations:
             self.enter_room(sid=sid, room=f"{str(conversation.id)}")
-            # # only notify online status in private conversation
             # if conversation.type == ConversationEnum.PRIVATE:
             str_conversation_id = str(conversation.id)
             if len(updated_user_connections) == 1:
@@ -59,47 +57,31 @@ class ChatSocket(AsyncNamespace):
                         },
                     )
                 )
-            # get the online status of participants in each user private conversations
-            for participant in conversation.participants:
-                online_status = {
-                    "user_id": str(participant.user_id),
-                    "conversation_id": str(conversation.id),
-                }
-                if str(participant.user_id) != str(user.id):
-                    if self.user_service.is_user_online(str(participant.user_id)):
-                        online_status["online"] = True
-                    else:
-                        online_status["online"] = False
-                    online_status_private_chat_participants.append(online_status)
+            participant_ids = [
+                str(participant.user_id)
+                for participant in conversation.participants
+                if participant.user_id != user.id
+            ]
+            participant_online_status = self.user_service.is_multiple_user_online(
+                participant_ids
+            )
+            online_status_conversations_participants.extend(
+                [
+                    {
+                        "user_id": participant_id,
+                        "conversation_id": str(conversation.id),
+                        "is_online": bool(participant_online_status[index]),
+                    }
+                    for index, participant_id in enumerate(participant_ids)
+                ]
+            )
         await asyncio.gather(*emit_presence_tasks)
         await self.emit(
-            "presence", data=online_status_private_chat_participants, to=sid
+            "presence", data=online_status_conversations_participants, to=sid
         )
 
     async def on_readmessage(self, sid, data):
         print(data)
-        # try:
-        #     user_session = await self.get_session(sid)
-        #     user_id = user_session["user_id"]
-        #     user_read_event = UserReadMessage(**data, user_id=user_id)
-        #     await self.chat_service.update_message_read_status(user_read_event)
-        # except ValidationError as ve:
-        #     await self.emit(
-        #         event="readMessage",
-        #         to=sid,
-        #         data={
-        #             "error": {
-        #                 "message": "Read message validation error",
-        #                 "details": ve.errors(),
-        #             }
-        #         },
-        #     )
-        # except MessageSentError as mse:
-        #     await self.emit(
-        #         event="readMessage",
-        #         to=sid,
-        #         data={"error": {"message": mse.message, "details": {}}},
-        #     )
 
     async def on_disconnect(self, sid):
         user_session = await self.get_session(sid)
@@ -152,7 +134,12 @@ class ChatSocket(AsyncNamespace):
             await self.emit(
                 event="message",
                 to=sid,
-                data={"error": {"message": mse.message, "details": {}}},
+                data={
+                    "error": {
+                        "message": mse.message,
+                        "details": {"conversation_id": mse.conversation["id"]},
+                    }
+                },
             )
 
     async def on_presence(self, sid, data):

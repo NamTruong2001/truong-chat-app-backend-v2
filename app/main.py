@@ -12,6 +12,7 @@ from router.http.read_status import ReadStatusRouter
 from router.http.register import SignUpRouter
 from router.http.test import TestRouter
 from router.socket import ChatSocket
+from util.global_variable import chat_namespace
 from service import ConversationService, MessageService, ReadStatusService
 from db.mongo import initialize_mongo_with_beanie
 from service.user import UserService
@@ -76,7 +77,7 @@ async def lifespan(app: FastAPI):
     # test_router = TestRouter(prefix="/hehe")
     # fapp.include_router(test_router)
     chat_socket = ChatSocket(
-        name_space="/chat",
+        name_space=chat_namespace,
         chat_service=message_service,
         conversation_service=conversation_service,
         user_service=user_service,

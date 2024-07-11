@@ -21,7 +21,10 @@ class MessageService:
             user_id=message.sender_id, conversation_id=message.conversation_id
         )
         if not is_in:
-            raise MessageSentError(message="Conversation not found", conversation={})
+            raise MessageSentError(
+                message="Conversation not found",
+                conversation={"id": message.conversation_id},
+            )
         saved_message = UserMessage(
             sender_id=PydanticObjectId(message.sender_id),
             conversation_id=PydanticObjectId(message.conversation_id),

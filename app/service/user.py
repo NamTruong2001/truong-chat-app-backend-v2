@@ -50,6 +50,9 @@ class UserService:
     def is_user_online(self, user_id: str) -> bool:
         return self.user_repository.is_user_online(user_id)
 
+    def is_multiple_user_online(self, user_ids: list[str]):
+        return self.user_repository.is_multiple_user_online(user_ids)
+
     def _add_online_user(self, user_id: str):
         return self.user_repository.add_online_user(user_id)
 
